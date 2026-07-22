@@ -4,6 +4,7 @@ Thumbs.db
 desktop.ini
 
 # Editors
+.vs/
 .idea/
 .vscode/
 *.suo
@@ -31,13 +32,15 @@ releases/
 [Ll]ibrary/
 [Tt]emp/
 [Oo]bj/
+[Bb]uild/
 [Bb]uilds/
 [Ll]ogs/
 [Uu]ser[Ss]ettings/
-MemoryCaptures/
-Recordings/
+[Mm]emoryCaptures/
+[Rr]ecordings/
 *.csproj
 *.sln
+*.slnx
 *.unityproj
 *.pidb
 *.booproj
@@ -46,6 +49,9 @@ Recordings/
 *.mdb
 *.opendb
 *.VC.db
+Assets/AssetStoreTools*
+*.apk
+*.aab
 
 # Godot
 .godot/
@@ -69,4 +75,7 @@ node_modules/
 .next/
 .vite/
 coverage/
+
+# Local Codex workspace files
+.codex/
 
