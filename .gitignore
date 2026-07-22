@@ -1,0 +1,72 @@
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editors
+.idea/
+.vscode/
+*.suo
+*.user
+*.userprefs
+*.tmp
+*.temp
+
+# Logs and local environment
+*.log
+.env
+.env.*
+!.env.example
+
+# Build outputs
+bin/
+build/
+Build/
+dist/
+out/
+release/
+releases/
+
+# Unity
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+MemoryCaptures/
+Recordings/
+*.csproj
+*.sln
+*.unityproj
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# Godot
+.godot/
+*.translation
+export_presets.cfg
+
+# Unreal Engine
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+*.opensdf
+*.sdf
+*.sln
+*.suo
+*.xcodeproj/
+*.xcworkspace/
+
+# Node tooling, if used for web builds/tools
+node_modules/
+.next/
+.vite/
+coverage/
+
