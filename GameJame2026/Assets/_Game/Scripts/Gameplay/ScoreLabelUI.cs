@@ -4,7 +4,7 @@ using UnityEngine.UI;
 
 namespace GameJamRAC.Gameplay
 {
-    /// <summary>角色头顶世界空间生命标签与魂穿提示。</summary>
+    /// <summary>角色头顶世界空间生命标签、路径计数与魂穿提示。</summary>
     public class ScoreLabelUI : MonoBehaviour
     {
         [SerializeField] private Vector3 worldOffset = new Vector3(0, 2.5f, 0);
@@ -22,6 +22,10 @@ namespace GameJamRAC.Gameplay
         private Coroutine transferCoroutine;
         private UnityEngine.Camera mainCamera;
         private Canvas worldCanvas;
+        private int currentLife;
+        private string currentDisplayName;
+        private bool isDead;
+        private float walkedPathLength;
 
         private void Awake()
         {
@@ -77,8 +81,16 @@ namespace GameJamRAC.Gameplay
 
         public void SetLife(int life, string displayName, bool isDead)
         {
-            if (nameText != null) nameText.text = displayName;
-            if (scoreText != null) scoreText.text = isDead ? "死亡" : "生命 " + life;
+            currentLife = life;
+            currentDisplayName = displayName;
+            this.isDead = isDead;
+            RefreshLabelText();
+        }
+
+        public void SetPathLength(float pathLength)
+        {
+            walkedPathLength = pathLength;
+            RefreshLabelText();
         }
 
         public void ShowTransfer(int amount)
@@ -100,6 +112,15 @@ namespace GameJamRAC.Gameplay
 
             if (transferBanner != null)
                 transferBanner.SetActive(false);
+        }
+
+        private void RefreshLabelText()
+        {
+            if (nameText != null) nameText.text = currentDisplayName;
+            if (scoreText == null) return;
+
+            string pathText = "走过路径：" + walkedPathLength.ToString("0.##");
+            scoreText.text = isDead ? "死亡\n" + pathText : "生命 " + currentLife + "\n" + pathText;
         }
     }
 }

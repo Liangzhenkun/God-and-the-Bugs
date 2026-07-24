@@ -33,10 +33,12 @@ namespace GameJamRAC.Gameplay
         private GridUnitMover gridMover;
         private int currentLife;
         private bool isDead;
+        private float walkedPathLength;
 
         public int CurrentLife => currentLife;
         public bool IsDead => isDead;
         public bool IsPlayerControlled => isPlayerControlled;
+        public float WalkedPathLength => walkedPathLength;
         public string DisplayName => displayName;
         public CameraAnchor ViewAnchor
         {
@@ -56,7 +58,9 @@ namespace GameJamRAC.Gameplay
             rb.isKinematic = true;
 
             gridMover = GetComponent<GridUnitMover>();
+            gridMover.onEnteredCell += CheckForExit;
             gridMover.onEnteredCell += SpendLife;
+            gridMover.onPathLengthChanged += UpdateWalkedPathLength;
 
             CameraAnchor anchor = ViewAnchor;
             if (anchor != null)
@@ -66,7 +70,11 @@ namespace GameJamRAC.Gameplay
         private void OnDestroy()
         {
             if (gridMover != null)
+            {
+                gridMover.onEnteredCell -= CheckForExit;
                 gridMover.onEnteredCell -= SpendLife;
+                gridMover.onPathLengthChanged -= UpdateWalkedPathLength;
+            }
         }
 
         private void Start()
@@ -97,6 +105,18 @@ namespace GameJamRAC.Gameplay
         {
             if (!isDead)
                 SetLife(currentLife - Mathf.Max(1, moveCost));
+        }
+
+        private void CheckForExit(int _)
+        {
+            if (!isPlayerControlled) return;
+
+            ExitGoal exitGoal = FindFirstObjectByType<ExitGoal>();
+            if (exitGoal == null || !exitGoal.ContainsWorldPosition(transform.position)) return;
+
+            VictoryFlowManager victoryFlow = FindFirstObjectByType<VictoryFlowManager>();
+            if (victoryFlow != null)
+                victoryFlow.Win();
         }
 
         /// <summary>将当前剩余生命全部交给指定角色，源角色死亡。</summary>
@@ -132,7 +152,17 @@ namespace GameJamRAC.Gameplay
         private void UpdateLifeLabel()
         {
             if (scoreLabel != null)
+            {
                 scoreLabel.SetLife(currentLife, displayName, isDead);
+                scoreLabel.SetPathLength(walkedPathLength);
+            }
+        }
+
+        private void UpdateWalkedPathLength(float pathLength)
+        {
+            walkedPathLength = pathLength;
+            if (scoreLabel != null)
+                scoreLabel.SetPathLength(walkedPathLength);
         }
 
         public void TakeControl()

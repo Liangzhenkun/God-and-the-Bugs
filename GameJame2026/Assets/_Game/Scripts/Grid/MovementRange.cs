@@ -61,6 +61,7 @@ namespace GameJamRAC.Grid
                     Add(-2, 2); Add(-1, 2); Add(0, 2); Add(1, 2); Add(2, 2);
                     break;
             }
+
         }
 
         private void Add(int x, int y)

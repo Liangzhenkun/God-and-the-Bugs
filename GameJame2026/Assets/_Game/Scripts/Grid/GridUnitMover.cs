@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 
@@ -19,13 +20,17 @@ namespace GameJamRAC.Grid
         private Vector3Int currentCell;
         private bool isMoving;
         private bool showMoveTargets;
+        private float totalPathLength;
         private MovementRange movementRange;
         private MovementRangeVisualizer rangeVisualizer;
 
         public event Action<int> onEnteredCell;
+        public event Action<float> onMovedDistance;
+        public event Action<float> onPathLengthChanged;
         public GridBoard Board => board;
         public Vector3Int CurrentCell => currentCell;
         public bool IsMoving => isMoving;
+        public float TotalPathLength => totalPathLength;
 
         private void Awake()
         {
@@ -33,7 +38,7 @@ namespace GameJamRAC.Grid
                 board = FindFirstObjectByType<GridBoard>();
 
             movementRange = GetComponent<MovementRange>();
-            rangeVisualizer = GetComponent<MovementRangeVisualizer>();
+            rangeVisualizer = GetComponentInChildren<MovementRangeVisualizer>(true);
 
             if (board != null)
                 currentCell = board.WorldToCell(transform.position);
@@ -51,10 +56,7 @@ namespace GameJamRAC.Grid
             if (Mathf.Abs(direction.x) + Mathf.Abs(direction.y) != 1) return false;
 
             Vector3Int targetCell = currentCell + new Vector3Int(direction.x, direction.y, 0);
-            if (!board.CanEnter(targetCell)) return false;
-
-            StartCoroutine(MoveToCell(targetCell));
-            return true;
+            return TryMoveToCell(targetCell);
         }
 
         public bool TryMoveToCell(Vector3Int targetCell)
@@ -64,8 +66,9 @@ namespace GameJamRAC.Grid
             targetCell.z = 0;
             Vector2Int offset = new Vector2Int(targetCell.x - currentCell.x, targetCell.y - currentCell.y);
             if (!CanMoveByAbility(offset) || !board.CanEnter(targetCell)) return false;
+            if (!HasContinuousRoad(currentCell, targetCell)) return false;
 
-            StartCoroutine(MoveToCell(targetCell));
+            StartCoroutine(MoveToCell(targetCell, GetGridDistance(offset)));
             return true;
         }
 
@@ -84,26 +87,30 @@ namespace GameJamRAC.Grid
             RefreshMoveTargets();
         }
 
-        private IEnumerator MoveToCell(Vector3Int targetCell)
+        private IEnumerator MoveToCell(Vector3Int targetCell, float pathDistance)
         {
             isMoving = true;
             Vector3 start = transform.position;
             Vector3 destination = board.GetCellCenterWorld(targetCell);
             float elapsed = 0f;
+            float duration = Mathf.Max(stepDuration, stepDuration * pathDistance);
 
-            while (elapsed < stepDuration)
+            while (elapsed < duration)
             {
                 elapsed += Time.deltaTime;
-                transform.position = Vector3.Lerp(start, destination, elapsed / stepDuration);
+                transform.position = Vector3.Lerp(start, destination, elapsed / duration);
                 yield return null;
             }
 
             transform.position = destination;
             currentCell = targetCell;
             isMoving = false;
+            totalPathLength += pathDistance;
             RefreshMoveTargets();
             board.NotifyCellEntered(targetCell);
             onEnteredCell?.Invoke(board.GetMoveCost(targetCell));
+            onMovedDistance?.Invoke(pathDistance);
+            onPathLengthChanged?.Invoke(totalPathLength);
         }
 
         private void RefreshMoveTargets()
@@ -139,6 +146,51 @@ namespace GameJamRAC.Grid
                 return Mathf.Abs(offset.x) + Mathf.Abs(offset.y) == 1;
 
             return movementRange.Contains(offset);
+        }
+
+        private bool HasContinuousRoad(Vector3Int start, Vector3Int target)
+        {
+            foreach (Vector3Int cell in GetLineCells(start, target))
+            {
+                if (!board.CanEnter(cell)) return false;
+            }
+
+            return true;
+        }
+
+        private static float GetGridDistance(Vector2Int offset)
+        {
+            return Mathf.Sqrt(offset.x * offset.x + offset.y * offset.y);
+        }
+
+        private static IEnumerable<Vector3Int> GetLineCells(Vector3Int start, Vector3Int target)
+        {
+            int x = start.x;
+            int y = start.y;
+            int dx = Mathf.Abs(target.x - x);
+            int dy = Mathf.Abs(target.y - y);
+            int stepX = x < target.x ? 1 : -1;
+            int stepY = y < target.y ? 1 : -1;
+            int error = dx - dy;
+
+            while (true)
+            {
+                yield return new Vector3Int(x, y, 0);
+                if (x == target.x && y == target.y) yield break;
+
+                int doubledError = error * 2;
+                if (doubledError > -dy)
+                {
+                    error -= dy;
+                    x += stepX;
+                }
+
+                if (doubledError < dx)
+                {
+                    error += dx;
+                    y += stepY;
+                }
+            }
         }
 
         private System.Collections.Generic.IReadOnlyList<Vector2Int> GetAbilityOffsets()

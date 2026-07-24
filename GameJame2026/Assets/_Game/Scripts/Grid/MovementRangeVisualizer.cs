@@ -11,14 +11,13 @@ namespace GameJamRAC.Grid
         [SerializeField] private Color rangeColor = new Color(1f, 0.15f, 0.15f, 0.45f);
         [SerializeField, Min(0f)] private float heightOffset = 0.04f;
 
-        private GameObject root;
         private Material material;
         private bool isVisible;
 
         private void Awake()
         {
-            if (movementRange == null) movementRange = GetComponent<MovementRange>();
-            if (mover == null) mover = GetComponent<GridUnitMover>();
+            if (movementRange == null) movementRange = GetComponentInParent<MovementRange>();
+            if (mover == null) mover = GetComponentInParent<GridUnitMover>();
             Build();
             SetVisible(false);
         }
@@ -26,31 +25,26 @@ namespace GameJamRAC.Grid
         public void SetVisible(bool visible)
         {
             isVisible = visible;
-            if (root != null)
-                root.SetActive(visible);
+            gameObject.SetActive(visible);
         }
 
         public void Refresh()
         {
-            if (root == null) return;
-
-            for (int i = root.transform.childCount - 1; i >= 0; i--)
+            for (int i = transform.childCount - 1; i >= 0; i--)
             {
-                GameObject child = root.transform.GetChild(i).gameObject;
+                GameObject child = transform.GetChild(i).gameObject;
                 child.SetActive(false);
                 Destroy(child);
             }
 
             BuildCells();
-            root.SetActive(isVisible);
+            gameObject.SetActive(isVisible);
         }
 
         private void Build()
         {
-            if (movementRange == null || mover == null || root != null) return;
+            if (movementRange == null || mover == null || material != null) return;
 
-            root = new GameObject("AbilityRangeOverlay");
-            root.transform.SetParent(transform, false);
             material = new Material(Shader.Find("Sprites/Default"));
             material.color = rangeColor;
 
@@ -59,7 +53,7 @@ namespace GameJamRAC.Grid
 
         private void BuildCells()
         {
-            if (movementRange == null || mover == null || root == null) return;
+            if (movementRange == null || mover == null || material == null) return;
 
             GridBoard board = mover.Board;
             if (board == null || board.Grid == null) return;
@@ -80,7 +74,7 @@ namespace GameJamRAC.Grid
         {
             GameObject cell = GameObject.CreatePrimitive(PrimitiveType.Quad);
             cell.name = isCenter ? "RangeOrigin" : $"RangeCell_{offset.x}_{offset.y}";
-            cell.transform.SetParent(root.transform, false);
+            cell.transform.SetParent(transform, false);
             cell.transform.localPosition = new Vector3(offset.x * cellSize, footOffset + heightOffset, offset.y * cellSize);
             cell.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
             float scale = isCenter ? 0.72f : 0.88f;
