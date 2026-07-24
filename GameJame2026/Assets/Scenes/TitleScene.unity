@@ -4605,7 +4605,7 @@ MonoBehaviour:
   gameplayOverlay: {fileID: 1969287104}
   volumeSlider: {fileID: 628468864}
   muteToggle: {fileID: 2084988103}
-  gameplaySceneName: 
+  gameplaySceneName: MainScene
 --- !u!1 &2137508094
 GameObject:
   m_ObjectHideFlags: 0
