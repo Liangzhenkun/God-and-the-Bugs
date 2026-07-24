@@ -23,20 +23,28 @@ namespace GameJamRAC.Camera
         public float PositionSmoothTime => positionSmoothTime;
         public float RotationFollowSpeed => rotationFollowSpeed;
         public bool SnapOnActivate => snapOnActivate;
-        public bool HasCinemachineCamera => cinemachineCamera != null;
+        public bool HasCinemachineCamera => GetCinemachineCamera() != null;
 
         [SerializeField, HideInInspector] private CinemachineCamera cinemachineCamera;
 
         public void ConfigureCinemachineFollow(Transform followTarget)
         {
-            if (cinemachineCamera != null)
-                cinemachineCamera.Follow = followTarget;
+            CinemachineCamera camera = GetCinemachineCamera();
+            if (camera != null)
+                camera.Follow = followTarget;
+        }
+
+        private CinemachineCamera GetCinemachineCamera()
+        {
+            if (cinemachineCamera == null)
+                cinemachineCamera = GetComponent<CinemachineCamera>();
+
+            return cinemachineCamera;
         }
 
         private void OnValidate()
         {
-            if (cinemachineCamera == null)
-                cinemachineCamera = GetComponent<CinemachineCamera>();
+            GetCinemachineCamera();
 
             CharacterUnit owner = GetComponentInParent<CharacterUnit>();
             if (owner != null)
@@ -50,13 +58,14 @@ namespace GameJamRAC.Camera
 
         public void SetCinemachineActive(bool isActive)
         {
-            if (cinemachineCamera == null) return;
+            CinemachineCamera camera = GetCinemachineCamera();
+            if (camera == null) return;
 
-            cinemachineCamera.enabled = isActive;
-            PrioritySettings priority = cinemachineCamera.Priority;
+            camera.enabled = isActive;
+            PrioritySettings priority = camera.Priority;
             priority.Enabled = true;
             priority.Value = 20;
-            cinemachineCamera.Priority = priority;
+            camera.Priority = priority;
         }
 
         private void OnDrawGizmosSelected()

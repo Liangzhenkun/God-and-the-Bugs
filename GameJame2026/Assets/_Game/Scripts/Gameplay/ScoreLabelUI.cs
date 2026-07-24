@@ -14,26 +14,65 @@ namespace GameJamRAC.Gameplay
         [SerializeField] private GameObject transferBanner;
         [SerializeField] private Text transferText;
         [SerializeField] private float transferDuration = 1.5f;
+        [SerializeField, Min(0.001f)] private float visibleScale = 0.03f;
+        [SerializeField] private int sortingOrder = 50;
+        [SerializeField, Min(0f)] private float modelTopPadding = 0.5f;
 
         private Transform labelTransform;
         private Coroutine transferCoroutine;
         private UnityEngine.Camera mainCamera;
+        private Canvas worldCanvas;
 
         private void Awake()
         {
             labelTransform = transform;
             mainCamera = UnityEngine.Camera.main;
+            worldCanvas = GetComponent<Canvas>();
+            ConfigureCanvas();
             if (transferBanner != null) transferBanner.SetActive(false);
         }
 
         private void LateUpdate()
         {
             if (followTarget != null)
-                labelTransform.position = followTarget.position + worldOffset;
+                labelTransform.position = GetLabelPosition();
 
             if (mainCamera == null) mainCamera = UnityEngine.Camera.main;
             if (mainCamera != null)
+            {
+                ConfigureCanvas();
                 labelTransform.rotation = mainCamera.transform.rotation;
+            }
+        }
+
+        private void ConfigureCanvas()
+        {
+            if (worldCanvas == null || mainCamera == null) return;
+
+            worldCanvas.renderMode = RenderMode.WorldSpace;
+            worldCanvas.worldCamera = mainCamera;
+            worldCanvas.overrideSorting = true;
+            worldCanvas.sortingOrder = sortingOrder;
+            labelTransform.localScale = Vector3.one * visibleScale;
+        }
+
+        private Vector3 GetLabelPosition()
+        {
+            Vector3 position = followTarget.position + worldOffset;
+            Renderer[] renderers = followTarget.GetComponentsInChildren<Renderer>();
+            float modelTop = float.NegativeInfinity;
+
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                Renderer renderer = renderers[i];
+                if (renderer.enabled)
+                    modelTop = Mathf.Max(modelTop, renderer.bounds.max.y);
+            }
+
+            if (!float.IsNegativeInfinity(modelTop))
+                position.y = Mathf.Max(position.y, modelTop + modelTopPadding);
+
+            return position;
         }
 
         public void SetLife(int life, string displayName, bool isDead)

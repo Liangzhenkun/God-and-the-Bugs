@@ -1,6 +1,7 @@
 using GameJamRAC.Camera;
 using GameJamRAC.Grid;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.Events;
 
 namespace GameJamRAC.Gameplay
@@ -37,7 +38,16 @@ namespace GameJamRAC.Gameplay
         public bool IsDead => isDead;
         public bool IsPlayerControlled => isPlayerControlled;
         public string DisplayName => displayName;
-        public CameraAnchor ViewAnchor => viewAnchor;
+        public CameraAnchor ViewAnchor
+        {
+            get
+            {
+                if (viewAnchor == null)
+                    viewAnchor = GetComponentInChildren<CameraAnchor>(true);
+
+                return viewAnchor;
+            }
+        }
         public CharacterUnit SoulTransferTarget => soulTransferTarget;
 
         private void Awake()
@@ -48,8 +58,9 @@ namespace GameJamRAC.Gameplay
             gridMover = GetComponent<GridUnitMover>();
             gridMover.onEnteredCell += SpendLife;
 
-            if (viewAnchor != null)
-                viewAnchor.ConfigureCinemachineFollow(transform);
+            CameraAnchor anchor = ViewAnchor;
+            if (anchor != null)
+                anchor.ConfigureCinemachineFollow(transform);
         }
 
         private void OnDestroy()
@@ -75,14 +86,10 @@ namespace GameJamRAC.Gameplay
         {
             if (gridMover.IsMoving) return;
 
-            if (Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.UpArrow))
-                gridMover.TryMove(Vector2Int.up);
-            else if (Input.GetKeyDown(KeyCode.S) || Input.GetKeyDown(KeyCode.DownArrow))
-                gridMover.TryMove(Vector2Int.down);
-            else if (Input.GetKeyDown(KeyCode.A) || Input.GetKeyDown(KeyCode.LeftArrow))
-                gridMover.TryMove(Vector2Int.left);
-            else if (Input.GetKeyDown(KeyCode.D) || Input.GetKeyDown(KeyCode.RightArrow))
-                gridMover.TryMove(Vector2Int.right);
+            if (!Input.GetMouseButtonDown(0)) return;
+            if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
+
+            gridMover.TryMoveFromScreen(UnityEngine.Camera.main, Input.mousePosition);
         }
 
         /// <summary>成功进入一个新格后扣除该格的生命消耗。</summary>
@@ -131,12 +138,16 @@ namespace GameJamRAC.Gameplay
         public void TakeControl()
         {
             if (!isDead)
+            {
                 isPlayerControlled = true;
+                gridMover.SetMoveTargetsVisible(true);
+            }
         }
 
         public void ReleaseControl()
         {
             isPlayerControlled = false;
+            gridMover.SetMoveTargetsVisible(false);
         }
     }
 }

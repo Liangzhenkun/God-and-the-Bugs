@@ -8,5 +8,12 @@ namespace GameJamRAC.Grid
     public class RouteTile : Tile
     {
         [Min(1)] public int moveCost = 1;
+
+        [Header("特殊格功能")]
+        [SerializeField] private bool isInteractive;
+        [SerializeField] private string interactionId;
+
+        public bool IsInteractive => isInteractive;
+        public string InteractionId => interactionId;
     }
 }

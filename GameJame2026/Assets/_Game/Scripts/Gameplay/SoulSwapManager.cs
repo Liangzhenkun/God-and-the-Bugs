@@ -83,13 +83,10 @@ namespace GameJamRAC.Gameplay
             switch (currentState)
             {
                 case SwapState.AutoPilot:
-                    // 第一次：仅进入 A 的角色子机位。
                     EnterState(SwapState.PossessingA);
                     break;
                 case SwapState.PossessingA:
-                    // 第二次：把 A 的剩余生命定向转给其槽位目标（当前为 B）。
-                    if (CanTransferFrom(0))
-                        EnterState(SwapState.TransferringAB);
+                    TransferAndPossessB();
                     break;
             }
         }
@@ -211,6 +208,23 @@ namespace GameJamRAC.Gameplay
             if (targetLabel != null) targetLabel.ShowTransfer(transferredLife);
 
             StartCoroutine(WaitThenCallback(transferDuration, onComplete));
+        }
+
+        private void TransferAndPossessB()
+        {
+            if (CanTransferFrom(0))
+            {
+                CharacterUnit source = characters[0];
+                CharacterUnit target = source.SoulTransferTarget;
+                int transferredLife = source.TransferRemainingLifeTo(target);
+
+                ScoreLabelUI sourceLabel = source.GetComponentInChildren<ScoreLabelUI>();
+                ScoreLabelUI targetLabel = target.GetComponentInChildren<ScoreLabelUI>();
+                if (sourceLabel != null) sourceLabel.ShowTransfer(transferredLife);
+                if (targetLabel != null) targetLabel.ShowTransfer(transferredLife);
+            }
+
+            EnterState(SwapState.PossessingB);
         }
 
         private bool CanTransferFrom(int index)
