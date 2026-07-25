@@ -1,3 +1,4 @@
+using System.Collections;
 using GameJamRAC.Grid;
 using UnityEngine;
 
@@ -22,6 +23,7 @@ namespace GameJamRAC.Gameplay
         [SerializeField] private GridBoard boardB;
         [SerializeField] private SoulSwapManager soulSwapManager;
         [SerializeField] private BridgeCharacterVisualState bVisualState;
+        [SerializeField] private CharacterSpriteState aVisualState;
 
         [Header("Bridge")]
         [SerializeField, Min(0f)] private float bridgeHeightAboveB = 2.6f;
@@ -29,11 +31,14 @@ namespace GameJamRAC.Gameplay
         [SerializeField] private Color bridgeGlowColor = new Color(1f, 0.7f, 0.1f, 1f);
         [SerializeField, Min(0f)] private float glowRange = 5f;
         [SerializeField, Min(0f)] private float glowIntensity = 6f;
+        [SerializeField, Min(0.1f)] private float absorbEatDuration = 1.5f;
 
         private bool bActivated;
         private bool bridgeActive;
+        private bool aStandingOnBridge;
         private Vector3Int bridgeCellForA;
         private Light glowLight;
+        private Coroutine absorptionCoroutine;
 
         private void Reset()
         {
@@ -92,7 +97,9 @@ namespace GameJamRAC.Gameplay
                 return;
 
             bridgeActive = true;
-            bVisualState?.SetIdle();
+            bVisualState?.SetDead();
+            SetBVisualVisible(true);
+            if (moverB != null) moverB.enabled = false;
             Vector3 bridgeWorldPosition = boardB.Grid.GetCellCenterWorld(moverB.CurrentCell);
             bridgeCellForA = boardA.WorldToCell(bridgeWorldPosition);
             float bridgeHeight = characterB.transform.position.y + bridgeHeightAboveB;
@@ -103,34 +110,71 @@ namespace GameJamRAC.Gameplay
 
         private void OnACellReached(Vector3Int cell)
         {
-            if (!bridgeActive || cell != bridgeCellForA || characterA == null || characterB == null)
+            if (!bridgeActive || characterA == null || characterB == null)
                 return;
 
-            int transferredLife = characterB.TransferRemainingLifeTo(characterA);
-            if (transferredLife <= 0) return;
+            if (cell == bridgeCellForA)
+            {
+                aStandingOnBridge = true;
+                return;
+            }
 
-            // B is now dead, so its temporary bridge is consumed with its life.
+            if (!aStandingOnBridge || absorptionCoroutine != null)
+                return;
+
+            aStandingOnBridge = false;
+            absorptionCoroutine = StartCoroutine(AbsorbBridgeLifeAfterLeaving());
+        }
+
+        private IEnumerator AbsorbBridgeLifeAfterLeaving()
+        {
+            if (moverA != null) moverA.enabled = false;
+            aVisualState?.PlayEatAnimation();
+            yield return new WaitForSeconds(absorbEatDuration);
+
+            characterB.TransferRemainingLifeTo(characterA);
+
             bridgeActive = false;
             boardA?.ClearTemporaryWalkableCells();
-            moverA?.RefreshMoveTargets();
             SetGlow(false, bridgeGlowColor);
             soulSwapManager?.SetSoulSwapUnlocked(false);
             bVisualState?.SetDead();
+            SetBVisualVisible(false);
+            aVisualState?.FinishEatAnimation();
+
+            if (moverA != null)
+            {
+                moverA.enabled = true;
+                moverA.RefreshMoveTargets();
+            }
+
+            absorptionCoroutine = null;
         }
 
         /// <summary>恢复本关开局的交互状态，供死亡复活流程调用。</summary>
         public void ResetSequence()
         {
+            if (absorptionCoroutine != null)
+            {
+                StopCoroutine(absorptionCoroutine);
+                absorptionCoroutine = null;
+            }
+
             bActivated = false;
             bridgeActive = false;
+            aStandingOnBridge = false;
             bridgeCellForA = default;
 
             if (boardA != null)
                 boardA.ClearTemporaryWalkableCells();
 
+            if (moverA != null) moverA.enabled = true;
+            if (moverB != null) moverB.enabled = true;
             moverA?.RefreshMoveTargets();
             SetGlow(false, activatedGlowColor);
+            SetBVisualVisible(true);
             bVisualState?.SetIdle();
+            aVisualState?.RefreshLifeState();
 
             if (soulSwapManager != null)
                 soulSwapManager.SetSoulSwapUnlocked(false);
@@ -146,6 +190,7 @@ namespace GameJamRAC.Gameplay
             if (boardB == null && moverB != null) boardB = moverB.Board;
             if (soulSwapManager == null) soulSwapManager = FindFirstObjectByType<SoulSwapManager>();
             if (bVisualState == null && characterB != null) bVisualState = characterB.GetComponentInChildren<BridgeCharacterVisualState>(true);
+            if (aVisualState == null && characterA != null) aVisualState = characterA.GetComponentInChildren<CharacterSpriteState>(true);
         }
 
         private void OnSoulSwapStateChanged(SoulSwapManager.SwapState state)
@@ -175,6 +220,17 @@ namespace GameJamRAC.Gameplay
             glowLight.color = color;
             glowLight.range = glowRange;
             glowLight.intensity = active ? glowIntensity : 0f;
+        }
+
+        private void SetBVisualVisible(bool visible)
+        {
+            if (characterB == null) return;
+
+            foreach (SpriteRenderer sprite in characterB.GetComponentsInChildren<SpriteRenderer>(true))
+                sprite.enabled = visible;
+
+            foreach (ScoreLabelUI label in characterB.GetComponentsInChildren<ScoreLabelUI>(true))
+                label.gameObject.SetActive(visible);
         }
     }
 }

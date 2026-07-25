@@ -13,8 +13,12 @@ namespace GameJamRAC.Gameplay
 
         [Header("低血量")]
         [SerializeField, Min(1)] private int lowHealthMaximum = 3;
+        [SerializeField] private string idleStateName = "A Idlewalk Animation";
+        [SerializeField] private string lowHealthStateName = "lowHealth";
+        [SerializeField] private string dieStateName = "Die";
 
         private static readonly int LifeState = Animator.StringToHash("LifeState");
+        private static readonly int EatState = Animator.StringToHash("Eat");
 
         private void Awake()
         {
@@ -45,6 +49,31 @@ namespace GameJamRAC.Gameplay
             int state = life <= 0 ? 2 : life <= lowHealthMaximum ? 1 : 0;
             int currentState = life <= 0 ? 2 : life <= lowHealthMaximum ? 1 : 0;
             animator.SetInteger(LifeState, currentState);
+        }
+
+        public void PlayEatAnimation()
+        {
+            if (animator != null && animator.HasState(0, EatState))
+                animator.Play(EatState, 0, 0f);
+        }
+
+        public void RefreshLifeState()
+        {
+            if (character != null)
+                ApplyLifeState(character.CurrentLife);
+        }
+
+        public void FinishEatAnimation()
+        {
+            if (character == null || animator == null) return;
+
+            ApplyLifeState(character.CurrentLife);
+            string stateName = character.CurrentLife <= 0
+                ? dieStateName
+                : character.CurrentLife <= lowHealthMaximum
+                    ? lowHealthStateName
+                    : idleStateName;
+            animator.Play(stateName, 0, 0f);
         }
     }
 }
