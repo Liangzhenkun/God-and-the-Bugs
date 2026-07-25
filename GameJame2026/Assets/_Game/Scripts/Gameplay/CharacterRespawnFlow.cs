@@ -11,7 +11,7 @@ namespace GameJamRAC.Gameplay
         [SerializeField] private SoulSwapManager soulSwapManager;
         [SerializeField] private VictoryFlowManager victoryFlowManager;
         [SerializeField] private SoulBridgeSequence soulBridgeSequence;
-        [SerializeField, Min(0f)] private float respawnDelay = 0.45f;
+        [SerializeField, Min(1f)] private float respawnDelay = 1f;
 
         private readonly HashSet<CharacterUnit> respawning = new HashSet<CharacterUnit>();
 
@@ -39,6 +39,8 @@ namespace GameJamRAC.Gameplay
         private void OnCharacterDied(CharacterUnit character)
         {
             if (character == null || respawning.Contains(character)) return;
+            if (character.SuppressAutomaticRespawnOnDeath) return;
+            if (!character.WasPlayerControlledAtDeath) return;
             if (victoryFlowManager != null && victoryFlowManager.HasWon) return;
             StartCoroutine(RespawnRoutine(character));
         }
@@ -48,7 +50,7 @@ namespace GameJamRAC.Gameplay
             respawning.Add(character);
             soulBridgeSequence?.ResetSequence();
             soulSwapManager?.ResetProgressForRespawn();
-            yield return new WaitForSeconds(respawnDelay);
+            yield return new WaitForSeconds(Mathf.Max(1f, respawnDelay));
             ResetAllCharactersToInitialState();
             if (soulSwapManager != null)
             {

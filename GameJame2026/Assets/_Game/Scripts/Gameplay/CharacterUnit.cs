@@ -35,6 +35,8 @@ namespace GameJamRAC.Gameplay
         private GridUnitMover gridMover;
         private int currentLife;
         private bool isDead;
+        private bool wasPlayerControlledAtDeath;
+        private bool suppressAutomaticRespawnOnDeath;
         private float walkedPathLength;
         private Vector3 spawnPosition;
         private Quaternion spawnRotation;
@@ -42,6 +44,8 @@ namespace GameJamRAC.Gameplay
 
         public int CurrentLife => currentLife;
         public bool IsDead => isDead;
+        public bool WasPlayerControlledAtDeath => wasPlayerControlledAtDeath;
+        public bool SuppressAutomaticRespawnOnDeath => suppressAutomaticRespawnOnDeath;
         public bool IsPlayerControlled => isPlayerControlled;
         public float WalkedPathLength => walkedPathLength;
         public string DisplayName => displayName;
@@ -96,6 +100,7 @@ namespace GameJamRAC.Gameplay
         {
             currentLife = Mathf.Max(0, initialLife);
             isDead = currentLife == 0;
+            onScoreChanged?.Invoke(currentLife);
             UpdateLifeLabel();
             StartCoroutine(CaptureSpawnAfterSetup());
         }
@@ -149,6 +154,7 @@ namespace GameJamRAC.Gameplay
             if (isDead || target == null || target.isDead) return 0;
 
             int transferredLife = currentLife;
+            suppressAutomaticRespawnOnDeath = true;
             SetLife(0);
             target.ReceiveLife(transferredLife);
             return transferredLife;
@@ -174,6 +180,7 @@ namespace GameJamRAC.Gameplay
             if (currentLife == 0)
             {
                 bool wasDead = isDead;
+                wasPlayerControlledAtDeath = isPlayerControlled;
                 isDead = true;
                 isPlayerControlled = false;
                 if (!wasDead) onDied?.Invoke(this);
@@ -194,8 +201,11 @@ namespace GameJamRAC.Gameplay
             gridMover?.ResetAtWorldPosition(spawnPosition);
             currentLife = Mathf.Max(1, initialLife);
             isDead = false;
+            wasPlayerControlledAtDeath = false;
+            suppressAutomaticRespawnOnDeath = false;
             isPlayerControlled = false;
             walkedPathLength = 0f;
+            onScoreChanged?.Invoke(currentLife);
             UpdateLifeLabel();
         }
 

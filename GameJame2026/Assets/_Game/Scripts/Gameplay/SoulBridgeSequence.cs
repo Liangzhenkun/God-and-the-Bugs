@@ -21,6 +21,7 @@ namespace GameJamRAC.Gameplay
         [SerializeField] private GridBoard boardA;
         [SerializeField] private GridBoard boardB;
         [SerializeField] private SoulSwapManager soulSwapManager;
+        [SerializeField] private BridgeCharacterVisualState bVisualState;
 
         [Header("Bridge")]
         [SerializeField, Min(0f)] private float bridgeHeightAboveB = 2.6f;
@@ -57,6 +58,7 @@ namespace GameJamRAC.Gameplay
             if (boardA != null) boardA.InteractiveTileEntered += OnAInteraction;
             if (boardB != null) boardB.InteractiveTileEntered += OnBInteraction;
             if (moverA != null) moverA.onCellReached += OnACellReached;
+            if (soulSwapManager != null) soulSwapManager.onStateChanged += OnSoulSwapStateChanged;
         }
 
         private void Start()
@@ -70,6 +72,7 @@ namespace GameJamRAC.Gameplay
             if (boardA != null) boardA.InteractiveTileEntered -= OnAInteraction;
             if (boardB != null) boardB.InteractiveTileEntered -= OnBInteraction;
             if (moverA != null) moverA.onCellReached -= OnACellReached;
+            if (soulSwapManager != null) soulSwapManager.onStateChanged -= OnSoulSwapStateChanged;
         }
 
         private void OnAInteraction(string interactionId)
@@ -77,6 +80,7 @@ namespace GameJamRAC.Gameplay
             if (bActivated) return;
 
             bActivated = true;
+            bVisualState?.SetActive();
             SetGlow(true, activatedGlowColor);
             if (soulSwapManager != null)
                 soulSwapManager.SetSoulSwapUnlocked(true);
@@ -88,6 +92,7 @@ namespace GameJamRAC.Gameplay
                 return;
 
             bridgeActive = true;
+            bVisualState?.SetIdle();
             Vector3 bridgeWorldPosition = boardB.Grid.GetCellCenterWorld(moverB.CurrentCell);
             bridgeCellForA = boardA.WorldToCell(bridgeWorldPosition);
             float bridgeHeight = characterB.transform.position.y + bridgeHeightAboveB;
@@ -101,7 +106,16 @@ namespace GameJamRAC.Gameplay
             if (!bridgeActive || cell != bridgeCellForA || characterA == null || characterB == null)
                 return;
 
-            characterA.AddLife(characterB.CurrentLife);
+            int transferredLife = characterB.TransferRemainingLifeTo(characterA);
+            if (transferredLife <= 0) return;
+
+            // B is now dead, so its temporary bridge is consumed with its life.
+            bridgeActive = false;
+            boardA?.ClearTemporaryWalkableCells();
+            moverA?.RefreshMoveTargets();
+            SetGlow(false, bridgeGlowColor);
+            soulSwapManager?.SetSoulSwapUnlocked(false);
+            bVisualState?.SetDead();
         }
 
         /// <summary>恢复本关开局的交互状态，供死亡复活流程调用。</summary>
@@ -116,6 +130,7 @@ namespace GameJamRAC.Gameplay
 
             moverA?.RefreshMoveTargets();
             SetGlow(false, activatedGlowColor);
+            bVisualState?.SetIdle();
 
             if (soulSwapManager != null)
                 soulSwapManager.SetSoulSwapUnlocked(false);
@@ -130,6 +145,13 @@ namespace GameJamRAC.Gameplay
             if (boardA == null && moverA != null) boardA = moverA.Board;
             if (boardB == null && moverB != null) boardB = moverB.Board;
             if (soulSwapManager == null) soulSwapManager = FindFirstObjectByType<SoulSwapManager>();
+            if (bVisualState == null && characterB != null) bVisualState = characterB.GetComponentInChildren<BridgeCharacterVisualState>(true);
+        }
+
+        private void OnSoulSwapStateChanged(SoulSwapManager.SwapState state)
+        {
+            if (state == SoulSwapManager.SwapState.PossessingB && bActivated && !bridgeActive)
+                bVisualState?.SetActive();
         }
 
         private void SetGlow(bool active, Color color)

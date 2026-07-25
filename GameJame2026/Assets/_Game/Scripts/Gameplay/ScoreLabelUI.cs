@@ -18,6 +18,10 @@ namespace GameJamRAC.Gameplay
         [SerializeField] private int sortingOrder = 50;
         [SerializeField, Min(0f)] private float modelTopPadding = 0.5f;
 
+        [Header("生命数字样式")]
+        [SerializeField] private bool showOnlyLifeNumber;
+        [SerializeField, Min(1)] private int lifeNumberFontSize = 72;
+
         private Transform labelTransform;
         private Coroutine transferCoroutine;
         private UnityEngine.Camera mainCamera;
@@ -116,6 +120,28 @@ namespace GameJamRAC.Gameplay
 
         private void RefreshLabelText()
         {
+            if (showOnlyLifeNumber)
+            {
+                if (nameText != null)
+                    nameText.gameObject.SetActive(false);
+
+                if (scoreText != null)
+                {
+                    scoreText.gameObject.SetActive(true);
+                    scoreText.text = currentLife.ToString();
+                    scoreText.fontStyle = FontStyle.Bold;
+                    scoreText.fontSize = lifeNumberFontSize;
+                    scoreText.alignment = TextAnchor.MiddleCenter;
+                    scoreText.rectTransform.anchoredPosition = Vector2.zero;
+                    scoreText.rectTransform.sizeDelta = new Vector2(
+                        Mathf.Max(280f, scoreText.rectTransform.sizeDelta.x),
+                        Mathf.Max(120f, scoreText.rectTransform.sizeDelta.y));
+                }
+
+                return;
+            }
+
+            if (nameText != null) nameText.gameObject.SetActive(true);
             if (nameText != null) nameText.text = currentDisplayName;
             if (scoreText == null) return;
 

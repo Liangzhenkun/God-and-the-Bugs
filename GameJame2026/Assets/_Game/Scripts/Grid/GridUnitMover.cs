@@ -195,8 +195,17 @@ namespace GameJamRAC.Grid
 
         private bool HasContinuousRoad(Vector3Int start, Vector3Int target)
         {
+            bool isStartCell = true;
             foreach (Vector3Int cell in GetLineCells(start, target))
             {
+                // A bridge tile can disappear immediately after the unit arrives on it.
+                // The current standing cell must not prevent movement to a valid next cell.
+                if (isStartCell)
+                {
+                    isStartCell = false;
+                    continue;
+                }
+
                 if (!board.CanEnter(cell)) return false;
             }
 
