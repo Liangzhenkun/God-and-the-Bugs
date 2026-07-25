@@ -12,8 +12,10 @@ namespace GameJamRAC.Grid
         [Header("特殊格功能")]
         [SerializeField] private bool isInteractive;
         [SerializeField] private string interactionId;
+        [SerializeField] private bool isExit;
 
         public bool IsInteractive => isInteractive;
         public string InteractionId => interactionId;
+        public bool IsExit => isExit;
     }
 }

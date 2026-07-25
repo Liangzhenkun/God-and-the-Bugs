@@ -2,91 +2,187 @@ using UnityEngine;
 
 namespace GameJamRAC.Grid
 {
-    /// <summary>在角色脚下显示红色能力范围格，仅用于当前受控角色。</summary>
+    /// <summary>
+    /// 显示跟随角色的能力范围层。它不属于地图 Tilemap，始终是角色子物体，
+    /// 只显示落在道路上的能力格。
+    /// </summary>
+    [ExecuteAlways]
     [DisallowMultipleComponent]
     public class MovementRangeVisualizer : MonoBehaviour
     {
         [SerializeField] private MovementRange movementRange;
         [SerializeField] private GridUnitMover mover;
-        [SerializeField] private Color rangeColor = new Color(1f, 0.15f, 0.15f, 0.45f);
-        [SerializeField, Min(0f)] private float heightOffset = 0.04f;
+        [SerializeField] private Color rangeColor = new Color(1f, 0.12f, 0.12f, 0.82f);
+        [SerializeField, Min(0f)] private float heightOffset = 0.3f;
+        [SerializeField] private bool showInEditMode = true;
+        [SerializeField] private bool alwaysShowInGame = true;
 
         private Material material;
-        private bool isVisible;
+        private bool requestedVisible = true;
+        private bool needsRebuild = true;
+        private Vector3 lastOwnerPosition;
+        private Vector3Int lastCell;
+        private int lastRangeHash;
 
-        private void Awake()
+        private void OnEnable()
         {
-            if (movementRange == null) movementRange = GetComponentInParent<MovementRange>();
-            if (mover == null) mover = GetComponentInParent<GridUnitMover>();
-            Build();
-            SetVisible(false);
+            needsRebuild = true;
+            RebuildIfPossible();
+        }
+
+        private void OnValidate()
+        {
+            needsRebuild = true;
+        }
+
+        private void Start()
+        {
+            RebuildIfPossible();
+        }
+
+        private void Update()
+        {
+            if (!Application.isPlaying && (mover == null || mover.transform.position != lastOwnerPosition))
+                needsRebuild = true;
+
+            GridBoard board = mover != null ? mover.Board : null;
+            if (board != null)
+            {
+                Vector3Int cell = GetDisplayCell(board);
+                if (cell != lastCell) needsRebuild = true;
+            }
+
+            if (movementRange != null && GetRangeHash() != lastRangeHash)
+                needsRebuild = true;
+
+            if (needsRebuild)
+                RebuildIfPossible();
         }
 
         public void SetVisible(bool visible)
         {
-            isVisible = visible;
-            gameObject.SetActive(visible);
+            requestedVisible = visible;
+            ApplyVisibility();
         }
 
         public void Refresh()
         {
-            for (int i = transform.childCount - 1; i >= 0; i--)
-            {
-                GameObject child = transform.GetChild(i).gameObject;
-                child.SetActive(false);
-                Destroy(child);
-            }
-
-            BuildCells();
-            gameObject.SetActive(isVisible);
+            needsRebuild = true;
+            RebuildIfPossible();
         }
 
-        private void Build()
+        private void RebuildIfPossible()
         {
-            if (movementRange == null || mover == null || material != null) return;
+            ResolveReferences();
+            if (movementRange == null || mover == null || mover.Board == null || mover.Board.Grid == null) return;
 
-            material = new Material(Shader.Find("Sprites/Default"));
-            material.color = rangeColor;
-
-            BuildCells();
-        }
-
-        private void BuildCells()
-        {
-            if (movementRange == null || mover == null || material == null) return;
+            EnsureMaterial();
+            ClearCells();
 
             GridBoard board = mover.Board;
-            if (board == null || board.Grid == null) return;
-
-            float cellSize = board.Grid.cellSize.x;
-            float footOffset = -board.UnitHeight;
-            CreateCell(Vector2Int.zero, cellSize, footOffset, true);
+            Vector3Int originCell = GetDisplayCell(board);
+            CreateCell(board, originCell, true);
 
             foreach (Vector2Int offset in movementRange.Offsets)
             {
-                Vector3Int targetCell = mover.CurrentCell + new Vector3Int(offset.x, offset.y, 0);
+                Vector3Int targetCell = originCell + new Vector3Int(offset.x, offset.y, 0);
                 if (board.CanEnter(targetCell))
-                    CreateCell(offset, cellSize, footOffset, false);
+                    CreateCell(board, targetCell, false);
+            }
+
+            lastOwnerPosition = mover.transform.position;
+            lastCell = originCell;
+            lastRangeHash = GetRangeHash();
+            needsRebuild = false;
+            ApplyVisibility();
+        }
+
+        private void ResolveReferences()
+        {
+            if (movementRange == null) movementRange = GetComponentInParent<MovementRange>();
+            if (mover == null) mover = GetComponentInParent<GridUnitMover>();
+        }
+
+        private Vector3Int GetDisplayCell(GridBoard board)
+        {
+            return Application.isPlaying
+                ? mover.CurrentCell
+                : board.WorldToCell(mover.transform.position);
+        }
+
+        private void EnsureMaterial()
+        {
+            if (material == null)
+            {
+                material = new Material(Shader.Find("Sprites/Default"));
+                material.name = "AbilityRangeMaterial";
+                material.hideFlags = HideFlags.DontSaveInEditor | HideFlags.DontSaveInBuild;
+            }
+
+            material.color = rangeColor;
+            material.renderQueue = 4000;
+        }
+
+        private void CreateCell(GridBoard board, Vector3Int cellPosition, bool isOrigin)
+        {
+            GameObject cell = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            cell.name = isOrigin ? "RangeOrigin" : "RangeCell_" + cellPosition.x + "_" + cellPosition.y;
+            cell.hideFlags = HideFlags.DontSaveInEditor | HideFlags.DontSaveInBuild;
+            cell.transform.SetParent(transform, true);
+            cell.transform.position = board.Grid.GetCellCenterWorld(cellPosition) + Vector3.up * heightOffset;
+            cell.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
+
+            float cellSize = board.Grid.cellSize.x;
+            float scale = isOrigin ? 0.72f : 0.88f;
+            cell.transform.localScale = new Vector3(cellSize * scale, cellSize * scale, 1f);
+            Renderer renderer = cell.GetComponent<Renderer>();
+            renderer.sharedMaterial = material;
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+            renderer.allowOcclusionWhenDynamic = false;
+            renderer.sortingOrder = 100;
+
+            Collider collider = cell.GetComponent<Collider>();
+            if (Application.isPlaying) Destroy(collider);
+            else DestroyImmediate(collider);
+        }
+
+        private void ClearCells()
+        {
+            for (int i = transform.childCount - 1; i >= 0; i--)
+            {
+                GameObject cell = transform.GetChild(i).gameObject;
+                if (Application.isPlaying) Destroy(cell);
+                else DestroyImmediate(cell);
             }
         }
 
-        private void CreateCell(Vector2Int offset, float cellSize, float footOffset, bool isCenter)
+        private void ApplyVisibility()
         {
-            GameObject cell = GameObject.CreatePrimitive(PrimitiveType.Quad);
-            cell.name = isCenter ? "RangeOrigin" : $"RangeCell_{offset.x}_{offset.y}";
-            cell.transform.SetParent(transform, false);
-            cell.transform.localPosition = new Vector3(offset.x * cellSize, footOffset + heightOffset, offset.y * cellSize);
-            cell.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-            float scale = isCenter ? 0.72f : 0.88f;
-            cell.transform.localScale = new Vector3(cellSize * scale, cellSize * scale, 1f);
-            cell.GetComponent<Renderer>().sharedMaterial = material;
-            Destroy(cell.GetComponent<Collider>());
+            bool visible = Application.isPlaying
+                ? alwaysShowInGame || requestedVisible
+                : showInEditMode;
+
+            for (int i = 0; i < transform.childCount; i++)
+                transform.GetChild(i).gameObject.SetActive(visible);
+        }
+
+        private int GetRangeHash()
+        {
+            if (movementRange == null) return 0;
+
+            int hash = 17;
+            foreach (Vector2Int offset in movementRange.Offsets)
+                hash = hash * 31 + offset.GetHashCode();
+            return hash;
         }
 
         private void OnDestroy()
         {
-            if (material != null)
-                Destroy(material);
+            if (material == null) return;
+
+            if (Application.isPlaying) Destroy(material);
+            else DestroyImmediate(material);
         }
     }
 }

@@ -24,7 +24,8 @@ namespace GameJamRAC.Grid
 
             Vector3Int cell = grid.WorldToCell(worldPosition);
             cell.z = 0;
-            return exitTilemap.HasTile(cell);
+            RouteTile tile = exitTilemap.GetTile<RouteTile>(cell);
+            return tile != null && tile.IsExit;
         }
     }
 }

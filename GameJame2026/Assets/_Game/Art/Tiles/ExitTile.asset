@@ -37,3 +37,4 @@ MonoBehaviour:
   moveCost: 1
   isInteractive: 0
   interactionId: 
+  isExit: 1

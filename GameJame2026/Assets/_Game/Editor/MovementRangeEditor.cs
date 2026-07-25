@@ -33,6 +33,7 @@ namespace GameJamRAC.Editor
                     range.ApplyPreset();
                 EditorUtility.SetDirty(range);
                 serializedObject.Update();
+                RefreshVisualizer();
             }
 
             bool isCustom = CurrentPreset == MovementRange.Preset.Custom;
@@ -50,6 +51,7 @@ namespace GameJamRAC.Editor
                     EditorUtility.SetDirty(target);
                     serializedObject.Update();
                     SceneView.RepaintAll();
+                    RefreshVisualizer();
                 }
 
                 if (GUILayout.Button("转为自定义后手绘（保留当前形状）"))
@@ -146,6 +148,7 @@ namespace GameJamRAC.Editor
                 serializedObject.ApplyModifiedProperties();
                 EditorUtility.SetDirty(target);
                 SceneView.RepaintAll();
+                RefreshVisualizer();
                 return;
             }
 
@@ -155,6 +158,15 @@ namespace GameJamRAC.Editor
             serializedObject.ApplyModifiedProperties();
             EditorUtility.SetDirty(target);
             SceneView.RepaintAll();
+            RefreshVisualizer();
+        }
+
+        private void RefreshVisualizer()
+        {
+            MovementRange range = (MovementRange)target;
+            MovementRangeVisualizer visualizer = range.GetComponentInChildren<MovementRangeVisualizer>(true);
+            if (visualizer != null)
+                visualizer.Refresh();
         }
 
         private static string GetPresetDescription(MovementRange.Preset value)

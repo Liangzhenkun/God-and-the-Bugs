@@ -12,6 +12,7 @@ namespace GameJamRAC.Grid
         [Header("逻辑图层")]
         [SerializeField] private UnityEngine.Grid grid;
         [SerializeField] private Tilemap walkableTilemap;
+        [SerializeField] private Tilemap interactionTilemap;
 
         [Header("道路归属")]
         [SerializeField] private CharacterUnit owner;
@@ -29,6 +30,7 @@ namespace GameJamRAC.Grid
         [SerializeField] private Color gridColor = new Color(0.2f, 0.85f, 1f, 0.35f);
 
         public Tilemap WalkableTilemap => walkableTilemap;
+        public Tilemap InteractionTilemap => interactionTilemap;
         public UnityEngine.Grid Grid => grid;
         public float UnitHeight => unitHeight;
         public CharacterUnit Owner => owner;
@@ -36,7 +38,11 @@ namespace GameJamRAC.Grid
         private void Reset()
         {
             grid = GetComponentInChildren<UnityEngine.Grid>();
-            walkableTilemap = GetComponentInChildren<Tilemap>();
+            foreach (Tilemap tilemap in GetComponentsInChildren<Tilemap>(true))
+            {
+                if (tilemap.name.StartsWith("WalkableTilemap")) walkableTilemap = tilemap;
+                if (tilemap.name.StartsWith("InteractionTilemap")) interactionTilemap = tilemap;
+            }
         }
 
         public Vector3Int WorldToCell(Vector3 worldPosition)
@@ -87,9 +93,19 @@ namespace GameJamRAC.Grid
             return walkableTilemap != null ? walkableTilemap.GetTile<RouteTile>(cell) : null;
         }
 
+        public bool HasInteraction(Vector3Int cell)
+        {
+            RouteTile tile = interactionTilemap != null
+                ? interactionTilemap.GetTile<RouteTile>(cell)
+                : null;
+            return tile != null && tile.IsInteractive;
+        }
+
         public void NotifyCellEntered(Vector3Int cell)
         {
-            RouteTile tile = GetRouteTile(cell);
+            RouteTile tile = interactionTilemap != null
+                ? interactionTilemap.GetTile<RouteTile>(cell)
+                : null;
             if (tile != null && tile.IsInteractive)
                 onInteractiveTileEntered?.Invoke(tile.InteractionId);
         }

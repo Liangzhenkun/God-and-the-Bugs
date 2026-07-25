@@ -67,6 +67,15 @@ namespace GameJamRAC.Gameplay
                 anchor.ConfigureCinemachineFollow(transform);
         }
 
+        private void OnValidate()
+        {
+            if (Application.isPlaying || scoreLabel == null) return;
+
+            int previewLife = Mathf.Max(0, initialLife);
+            scoreLabel.SetLife(previewLife, displayName, previewLife == 0);
+            scoreLabel.SetPathLength(0f);
+        }
+
         private void OnDestroy()
         {
             if (gridMover != null)

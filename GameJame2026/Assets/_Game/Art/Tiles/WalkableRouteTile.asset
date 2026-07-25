@@ -12,7 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a199cd10bb219f948bca10fcf9c3895e, type: 3}
   m_Name: WalkableRouteTile
   m_EditorClassIdentifier: 
-  m_Sprite: {fileID: 2854513464904106449, guid: 18a30b031b1087e44891560f134e6dd8, type: 2}
+  m_Sprite: {fileID: -925004274778835727, guid: 6d22d0c9e3796b941a1cdccff9fd1810, type: 2}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_Transform:
     e00: 1
@@ -35,3 +35,6 @@ MonoBehaviour:
   m_Flags: 1
   m_ColliderType: 0
   moveCost: 1
+  isInteractive: 0
+  interactionId: 
+  isExit: 0
