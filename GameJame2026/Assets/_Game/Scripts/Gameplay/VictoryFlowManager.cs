@@ -13,6 +13,7 @@ namespace GameJamRAC.Gameplay
         [SerializeField] private string nextSceneName = "NextScene";
 
         private bool hasWon;
+        public bool HasWon => hasWon;
 
         private void Awake()
         {

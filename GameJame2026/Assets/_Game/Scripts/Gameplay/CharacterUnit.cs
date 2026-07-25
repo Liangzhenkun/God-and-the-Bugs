@@ -3,12 +3,14 @@ using GameJamRAC.Grid;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.Events;
+using System;
 
 namespace GameJamRAC.Gameplay
 {
     /// <summary>角色生命、格子移动接管与定向魂穿数据。</summary>
     [RequireComponent(typeof(Rigidbody))]
     [RequireComponent(typeof(GridUnitMover))]
+    [RequireComponent(typeof(GridCenterPlacement))]
     public class CharacterUnit : MonoBehaviour
     {
         [Header("角色属性")]
@@ -34,6 +36,9 @@ namespace GameJamRAC.Gameplay
         private int currentLife;
         private bool isDead;
         private float walkedPathLength;
+        private Vector3 spawnPosition;
+        private Quaternion spawnRotation;
+        private bool spawnCaptured;
 
         public int CurrentLife => currentLife;
         public bool IsDead => isDead;
@@ -51,6 +56,7 @@ namespace GameJamRAC.Gameplay
             }
         }
         public CharacterUnit SoulTransferTarget => soulTransferTarget;
+        public event Action<CharacterUnit> onDied;
 
         private void Awake()
         {
@@ -91,6 +97,15 @@ namespace GameJamRAC.Gameplay
             currentLife = Mathf.Max(0, initialLife);
             isDead = currentLife == 0;
             UpdateLifeLabel();
+            StartCoroutine(CaptureSpawnAfterSetup());
+        }
+
+        private System.Collections.IEnumerator CaptureSpawnAfterSetup()
+        {
+            yield return new WaitForEndOfFrame();
+            spawnPosition = transform.position;
+            spawnRotation = transform.rotation;
+            spawnCaptured = true;
         }
 
         private void Update()
@@ -139,6 +154,12 @@ namespace GameJamRAC.Gameplay
             return transferredLife;
         }
 
+        public void AddLife(int amount)
+        {
+            if (isDead || amount <= 0) return;
+            SetLife(currentLife + amount);
+        }
+
         private void ReceiveLife(int amount)
         {
             if (isDead || amount <= 0) return;
@@ -152,9 +173,29 @@ namespace GameJamRAC.Gameplay
             onScoreChanged?.Invoke(currentLife);
             if (currentLife == 0)
             {
+                bool wasDead = isDead;
                 isDead = true;
                 isPlayerControlled = false;
+                if (!wasDead) onDied?.Invoke(this);
             }
+            UpdateLifeLabel();
+        }
+
+        public void RespawnAtInitialPosition()
+        {
+            if (!spawnCaptured)
+            {
+                spawnPosition = transform.position;
+                spawnRotation = transform.rotation;
+                spawnCaptured = true;
+            }
+
+            transform.SetPositionAndRotation(spawnPosition, spawnRotation);
+            gridMover?.ResetAtWorldPosition(spawnPosition);
+            currentLife = Mathf.Max(1, initialLife);
+            isDead = false;
+            isPlayerControlled = false;
+            walkedPathLength = 0f;
             UpdateLifeLabel();
         }
 

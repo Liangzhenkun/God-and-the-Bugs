@@ -1,4 +1,5 @@
 using UnityEngine;
+using GameJamRAC.Gameplay;
 
 namespace GameJamRAC.Grid
 {
@@ -12,13 +13,14 @@ namespace GameJamRAC.Grid
     {
         [SerializeField] private MovementRange movementRange;
         [SerializeField] private GridUnitMover mover;
+        private CharacterUnit owner;
         [SerializeField] private Color rangeColor = new Color(1f, 0.12f, 0.12f, 0.82f);
         [SerializeField, Min(0f)] private float heightOffset = 0.3f;
         [SerializeField] private bool showInEditMode = true;
-        [SerializeField] private bool alwaysShowInGame = true;
+        [SerializeField, Tooltip("已废弃：运行时显示由当前角色控制权决定。")] private bool alwaysShowInGame;
 
         private Material material;
-        private bool requestedVisible = true;
+        private bool requestedVisible;
         private bool needsRebuild = true;
         private Vector3 lastOwnerPosition;
         private Vector3Int lastCell;
@@ -26,6 +28,8 @@ namespace GameJamRAC.Grid
 
         private void OnEnable()
         {
+            if (Application.isPlaying)
+                requestedVisible = false;
             needsRebuild = true;
             RebuildIfPossible();
         }
@@ -42,6 +46,13 @@ namespace GameJamRAC.Grid
 
         private void Update()
         {
+            ResolveReferences();
+            if (Application.isPlaying && owner != null && requestedVisible != owner.IsPlayerControlled)
+            {
+                requestedVisible = owner.IsPlayerControlled;
+                ApplyVisibility();
+            }
+
             if (!Application.isPlaying && (mover == null || mover.transform.position != lastOwnerPosition))
                 needsRebuild = true;
 
@@ -101,6 +112,7 @@ namespace GameJamRAC.Grid
         {
             if (movementRange == null) movementRange = GetComponentInParent<MovementRange>();
             if (mover == null) mover = GetComponentInParent<GridUnitMover>();
+            if (owner == null) owner = GetComponentInParent<CharacterUnit>();
         }
 
         private Vector3Int GetDisplayCell(GridBoard board)
@@ -120,7 +132,9 @@ namespace GameJamRAC.Grid
             }
 
             material.color = rangeColor;
-            material.renderQueue = 4000;
+            // Ability cells are transparent ground indicators. Keep them behind
+            // character sprites instead of forcing them to render on top.
+            material.renderQueue = 3000;
         }
 
         private void CreateCell(GridBoard board, Vector3Int cellPosition, bool isOrigin)
@@ -140,7 +154,9 @@ namespace GameJamRAC.Grid
             renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             renderer.receiveShadows = false;
             renderer.allowOcclusionWhenDynamic = false;
-            renderer.sortingOrder = 100;
+            // Ground map: 0; road: 5; interaction: 6; exit: 8; character PNG: 15.
+            // This keeps the ability hint visible over the ground but behind characters.
+            renderer.sortingOrder = 10;
 
             Collider collider = cell.GetComponent<Collider>();
             if (Application.isPlaying) Destroy(collider);
@@ -152,16 +168,19 @@ namespace GameJamRAC.Grid
             for (int i = transform.childCount - 1; i >= 0; i--)
             {
                 GameObject cell = transform.GetChild(i).gameObject;
-                if (Application.isPlaying) Destroy(cell);
+                if (Application.isPlaying)
+                {
+                    // Destroy 会延迟到帧末；先隐藏旧格子，避免移动时出现一帧的红色拖影。
+                    cell.SetActive(false);
+                    Destroy(cell);
+                }
                 else DestroyImmediate(cell);
             }
         }
 
         private void ApplyVisibility()
         {
-            bool visible = Application.isPlaying
-                ? alwaysShowInGame || requestedVisible
-                : showInEditMode;
+            bool visible = Application.isPlaying ? requestedVisible : showInEditMode;
 
             for (int i = 0; i < transform.childCount; i++)
                 transform.GetChild(i).gameObject.SetActive(visible);

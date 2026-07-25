@@ -7,6 +7,7 @@ using UnityEngine.Tilemaps;
 namespace GameJamRAC.Grid
 {
     /// <summary>格子移动器：只允许进入路线 Tile，并在抵达新格时发出事件。</summary>
+    [ExecuteAlways]
     [DisallowMultipleComponent]
     public class GridUnitMover : MonoBehaviour
     {
@@ -17,14 +18,20 @@ namespace GameJamRAC.Grid
         [SerializeField, Min(0.01f)] private float stepDuration = 0.22f;
         [SerializeField] private bool snapToGridOnStart = true;
 
+        [Header("编辑器站位")]
+        [SerializeField] private bool snapToRoadInEditMode = true;
+
         private Vector3Int currentCell;
         private bool isMoving;
         private bool showMoveTargets;
         private float totalPathLength;
         private MovementRange movementRange;
         private MovementRangeVisualizer rangeVisualizer;
+        private Vector3 lastEditorPosition;
+        private bool isSnappingInEditor;
 
         public event Action<int> onEnteredCell;
+        public event Action<Vector3Int> onCellReached;
         public event Action<float> onMovedDistance;
         public event Action<float> onPathLengthChanged;
         public GridBoard Board => board;
@@ -42,6 +49,28 @@ namespace GameJamRAC.Grid
 
             if (board != null)
                 currentCell = board.WorldToCell(transform.position);
+        }
+
+        private void OnEnable()
+        {
+            if (!Application.isPlaying)
+                SnapToRoadInEditor();
+
+            lastEditorPosition = transform.position;
+        }
+
+        private void OnValidate()
+        {
+            if (!Application.isPlaying)
+                SnapToRoadInEditor();
+        }
+
+        private void Update()
+        {
+            if (Application.isPlaying || !snapToRoadInEditMode || isSnappingInEditor) return;
+            if ((transform.position - lastEditorPosition).sqrMagnitude < 0.000001f) return;
+
+            SnapToRoadInEditor();
         }
 
         private void Start()
@@ -87,6 +116,17 @@ namespace GameJamRAC.Grid
             RefreshMoveTargets();
         }
 
+        public void ResetAtWorldPosition(Vector3 worldPosition)
+        {
+            StopAllCoroutines();
+            isMoving = false;
+            totalPathLength = 0f;
+            transform.position = worldPosition;
+            if (board != null) currentCell = board.WorldToCell(worldPosition);
+            RefreshMoveTargets();
+            onPathLengthChanged?.Invoke(totalPathLength);
+        }
+
         private IEnumerator MoveToCell(Vector3Int targetCell, float pathDistance)
         {
             isMoving = true;
@@ -109,11 +149,12 @@ namespace GameJamRAC.Grid
             RefreshMoveTargets();
             board.NotifyCellEntered(targetCell);
             onEnteredCell?.Invoke(board.GetMoveCost(targetCell));
+            onCellReached?.Invoke(targetCell);
             onMovedDistance?.Invoke(pathDistance);
             onPathLengthChanged?.Invoke(totalPathLength);
         }
 
-        private void RefreshMoveTargets()
+        public void RefreshMoveTargets()
         {
             if (board == null || board.WalkableTilemap == null) return;
 
@@ -142,6 +183,10 @@ namespace GameJamRAC.Grid
 
         private bool CanMoveByAbility(Vector2Int offset)
         {
+            Vector3Int targetCell = currentCell + new Vector3Int(offset.x, offset.y, 0);
+            if (board != null && board.IsTemporaryWalkableCell(targetCell))
+                return true;
+
             if (movementRange == null)
                 return Mathf.Abs(offset.x) + Mathf.Abs(offset.y) == 1;
 
@@ -208,5 +253,47 @@ namespace GameJamRAC.Grid
             Vector2Int.up,
             Vector2Int.down
         };
+
+        [ContextMenu("吸附到最近的道路格心")]
+        private void SnapToRoadInEditor()
+        {
+            if (Application.isPlaying || !snapToRoadInEditMode || board == null || board.WalkableTilemap == null)
+            {
+                lastEditorPosition = transform.position;
+                return;
+            }
+
+            isSnappingInEditor = true;
+            Vector3Int bestCell = board.WorldToCell(transform.position);
+
+            if (!board.CanEnter(bestCell))
+            {
+                float bestDistance = float.PositiveInfinity;
+                BoundsInt bounds = board.WalkableTilemap.cellBounds;
+                foreach (Vector3Int cell in bounds.allPositionsWithin)
+                {
+                    if (!board.WalkableTilemap.HasTile(cell)) continue;
+
+                    Vector3 center = board.GetCellCenterWorld(cell);
+                    float distance = (new Vector2(center.x, center.z) - new Vector2(transform.position.x, transform.position.z)).sqrMagnitude;
+                    if (distance >= bestDistance) continue;
+
+                    bestDistance = distance;
+                    bestCell = cell;
+                }
+            }
+
+            if (board.CanEnter(bestCell))
+            {
+                // 编辑器吸附只约束地面 X/Z；角色模型的高度由现有摆放决定，
+                // 不应在拖动时被道路层高度重写。
+                Vector3 snappedPosition = board.GetCellCenterWorld(bestCell);
+                snappedPosition.y = transform.position.y;
+                transform.position = snappedPosition;
+            }
+
+            lastEditorPosition = transform.position;
+            isSnappingInEditor = false;
+        }
     }
 }

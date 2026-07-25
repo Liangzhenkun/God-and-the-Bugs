@@ -2,6 +2,8 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.Tilemaps;
 using GameJamRAC.Gameplay;
+using System;
+using System.Collections.Generic;
 
 namespace GameJamRAC.Grid
 {
@@ -29,11 +31,16 @@ namespace GameJamRAC.Grid
         [SerializeField] private bool drawGridGizmos = true;
         [SerializeField] private Color gridColor = new Color(0.2f, 0.85f, 1f, 0.35f);
 
+        private readonly HashSet<Vector3Int> temporaryWalkableCells = new HashSet<Vector3Int>();
+        private readonly Dictionary<Vector3Int, float> temporaryCellHeights = new Dictionary<Vector3Int, float>();
+
         public Tilemap WalkableTilemap => walkableTilemap;
         public Tilemap InteractionTilemap => interactionTilemap;
         public UnityEngine.Grid Grid => grid;
         public float UnitHeight => unitHeight;
         public CharacterUnit Owner => owner;
+        public IEnumerable<Vector3Int> TemporaryWalkableCells => temporaryWalkableCells;
+        public event Action<string> InteractiveTileEntered;
 
         private void Reset()
         {
@@ -59,12 +66,16 @@ namespace GameJamRAC.Grid
             if (grid == null) return transform.position;
 
             cell.z = 0;
-            return grid.GetCellCenterWorld(cell) + Vector3.up * unitHeight;
+            float height = temporaryCellHeights.TryGetValue(cell, out float temporaryHeight)
+                ? temporaryHeight
+                : unitHeight;
+            return grid.GetCellCenterWorld(cell) + Vector3.up * height;
         }
 
         public bool CanEnter(Vector3Int cell)
         {
-            return walkableTilemap != null && walkableTilemap.HasTile(cell);
+            return (walkableTilemap != null && walkableTilemap.HasTile(cell))
+                || temporaryWalkableCells.Contains(cell);
         }
 
         public bool TryGetCellFromScreen(UnityEngine.Camera camera, Vector3 screenPosition, out Vector3Int cell)
@@ -107,7 +118,38 @@ namespace GameJamRAC.Grid
                 ? interactionTilemap.GetTile<RouteTile>(cell)
                 : null;
             if (tile != null && tile.IsInteractive)
+            {
                 onInteractiveTileEntered?.Invoke(tile.InteractionId);
+                InteractiveTileEntered?.Invoke(tile.InteractionId);
+            }
+        }
+
+        public void SetTemporaryWalkableCell(Vector3Int cell, bool enabled, float worldHeight)
+        {
+            cell.z = 0;
+            if (enabled)
+            {
+                temporaryWalkableCells.Add(cell);
+                temporaryCellHeights[cell] = worldHeight;
+            }
+            else
+            {
+                temporaryWalkableCells.Remove(cell);
+                temporaryCellHeights.Remove(cell);
+            }
+        }
+
+        public bool IsTemporaryWalkableCell(Vector3Int cell)
+        {
+            cell.z = 0;
+            return temporaryWalkableCells.Contains(cell);
+        }
+
+        /// <summary>清除运行时临时道路（例如 B 作为桥梁时生成的格子）。</summary>
+        public void ClearTemporaryWalkableCells()
+        {
+            temporaryWalkableCells.Clear();
+            temporaryCellHeights.Clear();
         }
 
         [ContextMenu("对齐道路首格到所属角色")]

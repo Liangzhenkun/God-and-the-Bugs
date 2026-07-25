@@ -95,6 +95,10 @@ namespace GameJamRAC.Grid
                 if (Quaternion.Angle(tilemapTransform.localRotation, Quaternion.identity) > 0.001f)
                     tilemapTransform.localRotation = Quaternion.identity;
                 SetIfDifferent(tilemapTransform.localScale, Vector3.one, value => tilemapTransform.localScale = value);
+
+                // Tilemap 的默认锚点必须是格心。若 X 为 0，瓦片会整体落在单元格左边界，
+                // 导致调色板笔刷、道路、交互格与能力范围看起来相差半格。
+                SetIfDifferent(tilemap.tileAnchor, new Vector3(0.5f, 0.5f, 0f), value => tilemap.tileAnchor = value);
             }
 
             gridTransform.hasChanged = false;
