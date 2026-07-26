@@ -50,7 +50,7 @@ namespace GameJamRAC.UI
             ResolveReferences();
             AudioSettingsState.Apply();
             UIRuntimeFont.ApplyTo(targetCanvas != null ? targetCanvas.transform : null);
-            SoundToggleButton.Create(targetCanvas != null ? targetCanvas.transform : transform);
+            // 声音按钮改为场景层级组件，不再由脚本临时创建。
             WireAllButtons();
         }
 

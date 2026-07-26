@@ -74,6 +74,12 @@ namespace GameJamRAC.Gameplay
 
             hasWon = true;
             FreezeSceneMovement();
+            if (IsFinalScene)
+            {
+                ShowCertificatePanel();
+                return;
+            }
+
             if (victoryPanel != null)
                 victoryPanel.SetActive(true);
         }

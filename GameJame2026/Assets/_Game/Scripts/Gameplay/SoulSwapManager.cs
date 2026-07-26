@@ -23,7 +23,7 @@ namespace GameJamRAC.Gameplay
         [SerializeField] private Button swapButton;
         [SerializeField] private Text swapButtonLabel;
         [SerializeField] private Text statePrompt;
-        [SerializeField] private string swapButtonText = "\u9B42\u7A7F";
+        [SerializeField] private string swapButtonText = "SOUL TRANSFER";
         [SerializeField] private Color lockedButtonColor = new Color(0.42f, 0.42f, 0.42f, 1f);
         [SerializeField] private Color unlockedButtonColor = new Color(0.16f, 0.52f, 1f, 1f);
         [SerializeField] private bool allowSwapImmediately;
@@ -154,8 +154,8 @@ namespace GameJamRAC.Gameplay
             isOverviewView = false;
             onStateChanged?.Invoke(currentState);
             UpdateUI(newState == SwapState.PossessingA
-                ? "\u63A7\u5236 A - \u70B9\u51FB\u9B42\u7A7F\u5207\u6362\u5230 B"
-                : "\u63A7\u5236 B - \u70B9\u51FB\u9B42\u7A7F\u5207\u6362\u5230 A");
+                ? "Controlling A — click Soul Transfer to switch to B"
+                : "Controlling B — click Soul Transfer to switch to A");
             SetButtonActive(soulSwapUnlocked && CanPossessCharacter(GetOtherCharacterIndex()));
         }
 
@@ -296,8 +296,6 @@ namespace GameJamRAC.Gameplay
             if (swapButton != null)
             {
                 swapButton.interactable = active;
-                if (swapButton.image != null)
-                    swapButton.image.color = active ? unlockedButtonColor : lockedButtonColor;
             }
             if (swapButtonLabel != null)
                 swapButtonLabel.text = swapButtonText;
@@ -358,7 +356,7 @@ namespace GameJamRAC.Gameplay
             SetControlledCharacter(0);
             if (allowSwapImmediately)
                 SetSoulSwapUnlocked(true);
-            UpdateUI("\u63A7\u5236 A");
+            UpdateUI("Controlling A");
         }
 
         private void PreviewCharacterCamera(CharacterUnit character)
@@ -506,7 +504,7 @@ namespace GameJamRAC.Gameplay
             promptTransform.pivot = new Vector2(0.5f, 0.5f);
             promptTransform.anchoredPosition = Vector2.zero;
             statePrompt.alignment = TextAnchor.MiddleCenter;
-            statePrompt.text = "\u6309\u4EFB\u610F\u6309\u952E\u8FDB\u5165\u89D2\u8272\u63A7\u5236";
+            statePrompt.text = "Press any key to take control";
             statePrompt.gameObject.SetActive(true);
         }
     }
