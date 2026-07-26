@@ -46,5 +46,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   movementRange: {fileID: 0}
   mover: {fileID: 0}
-  rangeColor: {r: 1, g: 0.15, b: 0.15, a: 0.45}
+  rangeColor: {r: 1, g: 0.28, b: 0.28, a: 0.38}
   heightOffset: 0.04
+  showInEditMode: 1
+  alwaysShowInGame: 0

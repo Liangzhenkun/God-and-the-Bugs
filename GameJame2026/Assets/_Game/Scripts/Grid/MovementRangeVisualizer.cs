@@ -14,7 +14,9 @@ namespace GameJamRAC.Grid
         [SerializeField] private MovementRange movementRange;
         [SerializeField] private GridUnitMover mover;
         private CharacterUnit owner;
-        [SerializeField] private Color rangeColor = new Color(1f, 0.12f, 0.12f, 0.82f);
+        [Header("显示样式")]
+        [Tooltip("能力范围地面指示格的颜色；A（透明度）越小，显示越淡。")]
+        [SerializeField] private Color rangeColor = new Color(1f, 0.28f, 0.28f, 0.38f);
         [SerializeField, Min(0f)] private float heightOffset = 0.3f;
         [SerializeField] private bool showInEditMode = true;
         [SerializeField, Tooltip("已废弃：运行时显示由当前角色控制权决定。")] private bool alwaysShowInGame;

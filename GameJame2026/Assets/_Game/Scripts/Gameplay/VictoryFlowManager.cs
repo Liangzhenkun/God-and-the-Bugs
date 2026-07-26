@@ -10,7 +10,7 @@ namespace GameJamRAC.Gameplay
     {
         [SerializeField] private GameObject victoryPanel;
         [SerializeField] private Button nextLevelButton;
-        [SerializeField] private string nextSceneName = "NextScene";
+        [SerializeField] private string nextSceneName = "NextScene 3";
 
         private bool hasWon;
         public bool HasWon => hasWon;
@@ -35,8 +35,21 @@ namespace GameJamRAC.Gameplay
             if (hasWon) return;
 
             hasWon = true;
+            FreezeSceneMovement();
             if (victoryPanel != null)
                 victoryPanel.SetActive(true);
+        }
+
+        private void FreezeSceneMovement()
+        {
+            foreach (CharacterUnit character in FindObjectsByType<CharacterUnit>(FindObjectsSortMode.None))
+                character.ReleaseControl();
+
+            foreach (Grid.GridUnitMover mover in FindObjectsByType<Grid.GridUnitMover>(FindObjectsSortMode.None))
+                mover.enabled = false;
+
+            foreach (TurnActionManager turns in FindObjectsByType<TurnActionManager>(FindObjectsSortMode.None))
+                turns.enabled = false;
         }
 
         public void LoadNextLevel()

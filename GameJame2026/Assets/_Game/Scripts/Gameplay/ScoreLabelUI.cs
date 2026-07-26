@@ -130,6 +130,7 @@ namespace GameJamRAC.Gameplay
                     scoreText.gameObject.SetActive(true);
                     scoreText.text = currentLife.ToString();
                     scoreText.fontStyle = FontStyle.Bold;
+                    scoreText.color = Color.black;
                     scoreText.fontSize = lifeNumberFontSize;
                     scoreText.alignment = TextAnchor.MiddleCenter;
                     scoreText.rectTransform.anchoredPosition = Vector2.zero;
@@ -145,6 +146,7 @@ namespace GameJamRAC.Gameplay
             if (nameText != null) nameText.text = currentDisplayName;
             if (scoreText == null) return;
 
+            scoreText.color = Color.black;
             string pathText = "走过路径：" + walkedPathLength.ToString("0.##");
             scoreText.text = isDead ? "死亡\n" + pathText : "生命 " + currentLife + "\n" + pathText;
         }

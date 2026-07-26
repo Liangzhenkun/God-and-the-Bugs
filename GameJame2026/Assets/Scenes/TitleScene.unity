@@ -4578,14 +4578,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f3d80e1e12925f043bb723220d0817de, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  targetCanvas: {fileID: 1404421313}
-  menuPanel: {fileID: 471210161}
-  creditsOverlay: {fileID: 1575764764}
-  settingsOverlay: {fileID: 498115277}
-  gameplayOverlay: {fileID: 1969287104}
-  volumeSlider: {fileID: 628468864}
-  muteToggle: {fileID: 2084988103}
-  gameplaySceneName: 
 --- !u!114 &2117349403
 MonoBehaviour:
   m_ObjectHideFlags: 0

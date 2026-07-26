@@ -40,8 +40,15 @@ namespace GameJamRAC.Gameplay
         {
             if (character == null || respawning.Contains(character)) return;
             if (character.SuppressAutomaticRespawnOnDeath) return;
-            if (!character.WasPlayerControlledAtDeath) return;
             if (victoryFlowManager != null && victoryFlowManager.HasWon) return;
+
+            // B 被吃掉并不代表本局失败；若当时操控 B，交还给 A 后继续。
+            if (soulSwapManager != null && soulSwapManager.RecoverToAAfterBDefeated(character))
+                return;
+
+            // A 是主角，不论当时是否被直接控制，死亡都结束本局。
+            bool primaryCharacterDied = soulSwapManager != null && soulSwapManager.IsPrimaryCharacter(character);
+            if (!character.WasPlayerControlledAtDeath && !primaryCharacterDied) return;
             StartCoroutine(RespawnRoutine(character));
         }
 
@@ -49,6 +56,10 @@ namespace GameJamRAC.Gameplay
         {
             respawning.Add(character);
             soulBridgeSequence?.ResetSequence();
+            foreach (SceneThreeBConsumeSequence sequence in FindObjectsByType<SceneThreeBConsumeSequence>(FindObjectsSortMode.None))
+                sequence.ResetSequence(false);
+            foreach (PredatorAI predator in FindObjectsByType<PredatorAI>(FindObjectsSortMode.None))
+                predator.ResetState();
             soulSwapManager?.ResetProgressForRespawn();
             yield return new WaitForSeconds(Mathf.Max(1f, respawnDelay));
             ResetAllCharactersToInitialState();

@@ -90,14 +90,26 @@ namespace GameJamRAC.Grid
 
         public bool TryMoveToCell(Vector3Int targetCell)
         {
-            if (board == null || isMoving) return false;
+            return TryMoveToCellInternal(targetCell, false, board != null ? board.GetMoveCost(targetCell) : 1);
+        }
+
+        /// <summary>AI movement that can use a custom life cost and ignore character ability overlays.</summary>
+        public bool TryMoveToCellAsAi(Vector3Int targetCell, int lifeCost)
+        {
+            return TryMoveToCellInternal(targetCell, true, Mathf.Max(1, lifeCost));
+        }
+
+        private bool TryMoveToCellInternal(Vector3Int targetCell, bool ignoreAbility, int lifeCost)
+        {
+            // 禁用移动器代表该角色本回合不能再行动；仍可被外部事件传送或复位。
+            if (!isActiveAndEnabled || board == null || isMoving) return false;
 
             targetCell.z = 0;
             Vector2Int offset = new Vector2Int(targetCell.x - currentCell.x, targetCell.y - currentCell.y);
-            if (!CanMoveByAbility(offset) || !board.CanEnter(targetCell)) return false;
+            if ((!ignoreAbility && !CanMoveByAbility(offset)) || !board.CanEnter(targetCell)) return false;
             if (!HasContinuousRoad(currentCell, targetCell)) return false;
 
-            StartCoroutine(MoveToCell(targetCell, GetGridDistance(offset)));
+            StartCoroutine(MoveToCell(targetCell, GetGridDistance(offset), lifeCost));
             return true;
         }
 
@@ -127,7 +139,23 @@ namespace GameJamRAC.Grid
             onPathLengthChanged?.Invoke(totalPathLength);
         }
 
-        private IEnumerator MoveToCell(Vector3Int targetCell, float pathDistance)
+        /// <summary>Places the unit at a valid cell without adding walking distance.</summary>
+        public bool TeleportToCell(Vector3Int targetCell)
+        {
+            if (board == null) return false;
+
+            targetCell.z = 0;
+            if (!board.CanEnter(targetCell)) return false;
+
+            StopAllCoroutines();
+            isMoving = false;
+            currentCell = targetCell;
+            transform.position = board.GetCellCenterWorld(targetCell);
+            RefreshMoveTargets();
+            return true;
+        }
+
+        private IEnumerator MoveToCell(Vector3Int targetCell, float pathDistance, int lifeCost)
         {
             isMoving = true;
             Vector3 start = transform.position;
@@ -148,7 +176,7 @@ namespace GameJamRAC.Grid
             totalPathLength += pathDistance;
             RefreshMoveTargets();
             board.NotifyCellEntered(targetCell);
-            onEnteredCell?.Invoke(board.GetMoveCost(targetCell));
+            onEnteredCell?.Invoke(Mathf.Max(1, lifeCost));
             onCellReached?.Invoke(targetCell);
             onMovedDistance?.Invoke(pathDistance);
             onPathLengthChanged?.Invoke(totalPathLength);

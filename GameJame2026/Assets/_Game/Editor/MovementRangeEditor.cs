@@ -15,12 +15,20 @@ namespace GameJamRAC.Editor
 
         private void OnEnable()
         {
+            // Unity 在切换场景、删除能力组件或 Prefab 刷新时，可能短暂保留一个
+            // target 已为空的自定义 Inspector；此时不能访问 serializedObject。
+            if (target == null)
+                return;
+
             preset = serializedObject.FindProperty("preset");
             offsets = serializedObject.FindProperty("offsets");
         }
 
         public override void OnInspectorGUI()
         {
+            if (target == null || preset == null || offsets == null)
+                return;
+
             serializedObject.Update();
 
             EditorGUI.BeginChangeCheck();

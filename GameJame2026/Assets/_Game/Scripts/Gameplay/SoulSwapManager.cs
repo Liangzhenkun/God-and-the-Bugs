@@ -26,6 +26,7 @@ namespace GameJamRAC.Gameplay
         [SerializeField] private string swapButtonText = "\u9B42\u7A7F";
         [SerializeField] private Color lockedButtonColor = new Color(0.42f, 0.42f, 0.42f, 1f);
         [SerializeField] private Color unlockedButtonColor = new Color(0.16f, 0.52f, 1f, 1f);
+        [SerializeField] private bool allowSwapImmediately;
         [SerializeField, Min(0.05f)] private float overviewBlendDuration = 0.55f;
         [SerializeField, Min(0.05f)] private float characterBlendDuration = 0.55f;
 
@@ -37,6 +38,7 @@ namespace GameJamRAC.Gameplay
         private bool mainCameraStartOrthographic;
         private bool soulSwapUnlocked;
         private Coroutine cameraBlendCoroutine;
+        private Coroutine bDefeatRecoveryCoroutine;
         private bool awaitingStartInput = true;
         private bool isOverviewView = true;
 
@@ -79,7 +81,12 @@ namespace GameJamRAC.Gameplay
             if (swapButton != null)
                 swapButton.onClick.AddListener(OnSwapButtonPressed);
 
+            if (HasCharacter(1))
+                characters[1].onDied += OnSecondaryCharacterDied;
+
             EnterInitialAState();
+            if (allowSwapImmediately)
+                SetSoulSwapUnlocked(true);
         }
 
         private void Update()
@@ -90,6 +97,9 @@ namespace GameJamRAC.Gameplay
                     BeginCharacterControl();
                 return;
             }
+
+            if (soulSwapUnlocked)
+                SetButtonActive(CanPossessCharacter(GetOtherCharacterIndex()));
 
             if (Input.GetMouseButtonDown(1))
             {
@@ -104,16 +114,17 @@ namespace GameJamRAC.Gameplay
         {
             if (swapButton != null)
                 swapButton.onClick.RemoveListener(OnSwapButtonPressed);
+            if (HasCharacter(1))
+                characters[1].onDied -= OnSecondaryCharacterDied;
         }
 
         public void OnSwapButtonPressed()
         {
-            if (awaitingStartInput || !soulSwapUnlocked || !HasCharacter(0) || !HasCharacter(1))
+            int targetIndex = GetOtherCharacterIndex();
+            if (awaitingStartInput || !soulSwapUnlocked || !CanPossessCharacter(targetIndex))
                 return;
 
-            EnterState(currentState == SwapState.PossessingA
-                ? SwapState.PossessingB
-                : SwapState.PossessingA);
+            EnterState(targetIndex == 0 ? SwapState.PossessingA : SwapState.PossessingB);
         }
 
         private void EnterInitialAState()
@@ -135,7 +146,7 @@ namespace GameJamRAC.Gameplay
         private void EnterState(SwapState newState)
         {
             int index = newState == SwapState.PossessingA ? 0 : 1;
-            if (!HasCharacter(index))
+            if (!CanPossessCharacter(index))
                 return;
 
             currentState = newState;
@@ -145,7 +156,7 @@ namespace GameJamRAC.Gameplay
             UpdateUI(newState == SwapState.PossessingA
                 ? "\u63A7\u5236 A - \u70B9\u51FB\u9B42\u7A7F\u5207\u6362\u5230 B"
                 : "\u63A7\u5236 B - \u70B9\u51FB\u9B42\u7A7F\u5207\u6362\u5230 A");
-            SetButtonActive(true);
+            SetButtonActive(soulSwapUnlocked && CanPossessCharacter(GetOtherCharacterIndex()));
         }
 
         private void PossessCharacterFromMainCamera(int index)
@@ -222,6 +233,56 @@ namespace GameJamRAC.Gameplay
             return characters != null && index >= 0 && index < characters.Length && characters[index] != null;
         }
 
+        private bool CanPossessCharacter(int index)
+        {
+            if (!HasCharacter(index) || characters[index].IsDead)
+                return false;
+
+            SceneThreeBConsumeSequence sceneThreeConsume = FindFirstObjectByType<SceneThreeBConsumeSequence>();
+            return sceneThreeConsume == null
+                || index != 1
+                || !sceneThreeConsume.IsBUnavailable;
+        }
+
+        private int GetOtherCharacterIndex()
+        {
+            return currentState == SwapState.PossessingA ? 1 : 0;
+        }
+
+        public bool IsPrimaryCharacter(CharacterUnit character)
+        {
+            return HasCharacter(0) && characters[0] == character;
+        }
+
+        /// <summary>B 被捕食时不是失败：等捕食动画结束后自动回到仍存活的 A。</summary>
+        public bool RecoverToAAfterBDefeated(CharacterUnit defeatedCharacter)
+        {
+            if (!HasCharacter(1) || characters[1] != defeatedCharacter)
+                return false;
+            if (currentState != SwapState.PossessingB && !defeatedCharacter.WasPlayerControlledAtDeath)
+                return false;
+            if (!HasCharacter(0) || characters[0].IsDead)
+                return false;
+
+            if (bDefeatRecoveryCoroutine != null)
+                StopCoroutine(bDefeatRecoveryCoroutine);
+            bDefeatRecoveryCoroutine = StartCoroutine(RecoverToAAfterDelay());
+            return true;
+        }
+
+        private void OnSecondaryCharacterDied(CharacterUnit defeatedCharacter)
+        {
+            RecoverToAAfterBDefeated(defeatedCharacter);
+        }
+
+        private IEnumerator RecoverToAAfterDelay()
+        {
+            yield return new WaitForSeconds(1f);
+            bDefeatRecoveryCoroutine = null;
+            if (HasCharacter(0) && !characters[0].IsDead)
+                EnterState(SwapState.PossessingA);
+        }
+
         private void UpdateUI(string prompt)
         {
             if (statePrompt != null && !awaitingStartInput)
@@ -243,7 +304,7 @@ namespace GameJamRAC.Gameplay
         public void SetSoulSwapUnlocked(bool unlocked)
         {
             soulSwapUnlocked = unlocked && HasCharacter(0) && HasCharacter(1);
-            SetButtonActive(soulSwapUnlocked);
+            SetButtonActive(soulSwapUnlocked && CanPossessCharacter(GetOtherCharacterIndex()));
         }
 
         public void FocusCurrentCharacter()
@@ -293,6 +354,8 @@ namespace GameJamRAC.Gameplay
             awaitingStartInput = false;
             currentState = SwapState.PossessingA;
             SetControlledCharacter(0);
+            if (allowSwapImmediately)
+                SetSoulSwapUnlocked(true);
             UpdateUI("\u63A7\u5236 A");
         }
 

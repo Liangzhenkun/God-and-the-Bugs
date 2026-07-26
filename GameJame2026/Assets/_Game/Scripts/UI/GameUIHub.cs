@@ -44,7 +44,9 @@ namespace GameJamRAC.UI
 
         private void Start()
         {
-            if (showGuideOnSceneStart && !hasAutomaticallyShownGuide)
+            if (showGuideOnSceneStart
+                && SceneManager.GetActiveScene().name == "MainScene"
+                && !hasAutomaticallyShownGuide)
             {
                 hasAutomaticallyShownGuide = true;
                 StartCoroutine(ShowGuideAfterStart());
@@ -80,13 +82,11 @@ namespace GameJamRAC.UI
 
         private void BuildTopBar(Transform parent)
         {
-            CreateButton(parent, "MenuButton", "\u2261", new Vector2(0f, 1f), new Vector2(54f, -54f), new Vector2(64f, 64f), ShowMainMenu);
-            CreateButton(parent, "ResetButton", "\u21BB", new Vector2(0f, 1f), new Vector2(126f, -54f), new Vector2(64f, 64f), RestartScene);
             CreateButton(parent, "DialogueButton", "\u5267\u60C5", new Vector2(0f, 1f), new Vector2(212f, -54f), new Vector2(92f, 64f), ShowDialogue);
-            CreateButton(parent, "CodexButton", "\u56FE\u9274", new Vector2(1f, 1f), new Vector2(-176f, -54f), new Vector2(92f, 64f), ShowCodex);
-            CreateButton(parent, "HelpButton", "?", new Vector2(1f, 1f), new Vector2(-102f, -54f), new Vector2(64f, 64f), ShowGuide);
+            CreateButton(parent, "CodexButton", "\u56FE\u9274", new Vector2(1f, 1f), new Vector2(-250f, -54f), new Vector2(92f, 64f), ShowCodex);
+            CreateButton(parent, "HelpButton", "?", new Vector2(1f, 1f), new Vector2(-122f, -54f), new Vector2(64f, 64f), ShowGuide);
             CreateButton(parent, "SettingsButton", "\u2699", new Vector2(1f, 1f), new Vector2(-34f, -54f), new Vector2(64f, 64f), ShowSettings);
-            CreateText(parent, "CameraHint", "\u9F20\u6807\u53F3\u952E\u7F29\u653E\u89C6\u89D2", new Vector2(1f, 0f), new Vector2(-190f, 28f), new Vector2(360f, 38f), 20, TextAnchor.MiddleRight).color = new Color(1f, 1f, 1f, 0.88f);
+            CreateText(parent, "CameraHint", "\u9F20\u6807\u53F3\u952E\u7F29\u653E\u89C6\u89D2", new Vector2(1f, 0f), new Vector2(-220f, 34f), new Vector2(420f, 52f), 28, TextAnchor.MiddleRight).color = new Color(1f, 1f, 1f, 0.92f);
         }
 
         private GameObject BuildSettings(Transform parent)
@@ -155,16 +155,23 @@ namespace GameJamRAC.UI
             Transform cards = codexPanel.transform.Find("Cards");
             for (int i = cards.childCount - 1; i >= 0; i--) Destroy(cards.GetChild(i).gameObject);
             CharacterUnit[] characters = FindObjectsByType<CharacterUnit>(FindObjectsSortMode.None);
+            const int columns = 5;
+            const float columnSpacing = 220f;
+            const float rowSpacing = 235f;
             for (int i = 0; i < characters.Length; i++)
             {
                 CharacterUnit character = characters[i];
-                GameObject card = CreatePanel(cards, "CodexCard_" + character.name, new Vector2(250f, 360f));
-                SetRect(card.GetComponent<RectTransform>(), new Vector2(0f, 1f), new Vector2(150f + i * 285f, -200f), new Vector2(250f, 360f));
+                int column = i % columns;
+                int row = i / columns;
+                float x = (column - (columns - 1) * 0.5f) * columnSpacing;
+                float y = -130f - row * rowSpacing;
+                GameObject card = CreatePanel(cards, "CodexCard_" + character.name, new Vector2(200f, 210f));
+                SetRect(card.GetComponent<RectTransform>(), new Vector2(0.5f, 1f), new Vector2(x, y), new Vector2(200f, 210f));
                 Sprite portrait = codexPortraitSlots != null && i < codexPortraitSlots.Length ? codexPortraitSlots[i] : null;
-                Image image = CreateImage(card.transform, "PortraitSlot", new Vector2(0.5f, 0.63f), Vector2.zero, new Vector2(170f, 190f), new Color(0.3f, 0.36f, 0.48f, 0.9f));
+                Image image = CreateImage(card.transform, "PortraitSlot", new Vector2(0.5f, 0.65f), Vector2.zero, new Vector2(130f, 120f), new Color(0.3f, 0.36f, 0.48f, 0.9f));
                 image.sprite = portrait;
-                CreateText(card.transform, "Name", character.DisplayName, new Vector2(0.5f, 0.26f), Vector2.zero, new Vector2(210f, 48f), 27, TextAnchor.MiddleCenter);
-                CreateText(card.transform, "Info", "\u5DF2\u9047\u89C1\n\u56FE\u7247\u4E0E\u4ECB\u7ECD\u53EF\u5728\nGameUIHub \u4E2D\u66FF\u6362", new Vector2(0.5f, 0.10f), Vector2.zero, new Vector2(220f, 80f), 18, TextAnchor.MiddleCenter);
+                CreateText(card.transform, "Name", character.DisplayName, new Vector2(0.5f, 0.29f), Vector2.zero, new Vector2(180f, 40f), 23, TextAnchor.MiddleCenter);
+                CreateText(card.transform, "Info", "\u5DF2\u9047\u89C1\n\u56FE\u7247\u4E0E\u4ECB\u7ECD\u53EF\u5728\nGameUIHub \u4E2D\u66FF\u6362", new Vector2(0.5f, 0.10f), Vector2.zero, new Vector2(185f, 62f), 15, TextAnchor.MiddleCenter);
             }
         }
 

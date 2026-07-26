@@ -19,6 +19,7 @@ namespace GameJamRAC.Gameplay
 
         [Header("头顶标签")]
         [SerializeField] private ScoreLabelUI scoreLabel;
+        [SerializeField] private bool showHeadLabel = true;
 
         [Header("接管机位")]
         [SerializeField] private CameraAnchor viewAnchor;
@@ -35,6 +36,7 @@ namespace GameJamRAC.Gameplay
         private GridUnitMover gridMover;
         private int currentLife;
         private bool isDead;
+        private bool isVisuallyDead;
         private bool wasPlayerControlledAtDeath;
         private bool suppressAutomaticRespawnOnDeath;
         private float walkedPathLength;
@@ -44,6 +46,7 @@ namespace GameJamRAC.Gameplay
 
         public int CurrentLife => currentLife;
         public bool IsDead => isDead;
+        public bool IsVisuallyDead => isVisuallyDead;
         public bool WasPlayerControlledAtDeath => wasPlayerControlledAtDeath;
         public bool SuppressAutomaticRespawnOnDeath => suppressAutomaticRespawnOnDeath;
         public bool IsPlayerControlled => isPlayerControlled;
@@ -100,6 +103,7 @@ namespace GameJamRAC.Gameplay
         {
             currentLife = Mathf.Max(0, initialLife);
             isDead = currentLife == 0;
+            isVisuallyDead = isDead;
             onScoreChanged?.Invoke(currentLife);
             UpdateLifeLabel();
             StartCoroutine(CaptureSpawnAfterSetup());
@@ -151,10 +155,16 @@ namespace GameJamRAC.Gameplay
         /// <summary>将当前剩余生命全部交给指定角色，源角色死亡。</summary>
         public int TransferRemainingLifeTo(CharacterUnit target)
         {
+            return GiveRemainingLifeTo(target, true);
+        }
+
+        /// <summary>将剩余生命交给目标。捕食主控角色时传入 false，保留全局复活流程。</summary>
+        public int GiveRemainingLifeTo(CharacterUnit target, bool suppressRespawn)
+        {
             if (isDead || target == null || target.isDead) return 0;
 
             int transferredLife = currentLife;
-            suppressAutomaticRespawnOnDeath = true;
+            suppressAutomaticRespawnOnDeath = suppressRespawn;
             SetLife(0);
             target.ReceiveLife(transferredLife);
             return transferredLife;
@@ -182,6 +192,7 @@ namespace GameJamRAC.Gameplay
                 bool wasDead = isDead;
                 wasPlayerControlledAtDeath = isPlayerControlled;
                 isDead = true;
+                isVisuallyDead = true;
                 isPlayerControlled = false;
                 if (!wasDead) onDied?.Invoke(this);
             }
@@ -201,12 +212,29 @@ namespace GameJamRAC.Gameplay
             gridMover?.ResetAtWorldPosition(spawnPosition);
             currentLife = Mathf.Max(1, initialLife);
             isDead = false;
+            isVisuallyDead = false;
             wasPlayerControlledAtDeath = false;
             suppressAutomaticRespawnOnDeath = false;
             isPlayerControlled = false;
             walkedPathLength = 0f;
+            SetPresentationVisible(true);
             onScoreChanged?.Invoke(currentLife);
             UpdateLifeLabel();
+        }
+
+        public void SetPresentationVisible(bool visible)
+        {
+            foreach (SpriteRenderer sprite in GetComponentsInChildren<SpriteRenderer>(true))
+                sprite.enabled = visible;
+
+            foreach (ScoreLabelUI label in GetComponentsInChildren<ScoreLabelUI>(true))
+                label.gameObject.SetActive(visible && showHeadLabel);
+        }
+
+        /// <summary>独立于生命数值的视觉死亡标记，供动画与捕食判定使用。</summary>
+        public void SetVisualDeath(bool value)
+        {
+            isVisuallyDead = value;
         }
 
         private void UpdateLifeLabel()

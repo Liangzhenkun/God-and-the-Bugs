@@ -2294,6 +2294,18 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 131016859}
     - target: {fileID: 660128123860892032, guid: 4da85541a0097c34084d78c7b35157ec, type: 3}
+      propertyPath: rangeColor.a
+      value: 0.38
+      objectReference: {fileID: 0}
+    - target: {fileID: 660128123860892032, guid: 4da85541a0097c34084d78c7b35157ec, type: 3}
+      propertyPath: rangeColor.b
+      value: 0.28
+      objectReference: {fileID: 0}
+    - target: {fileID: 660128123860892032, guid: 4da85541a0097c34084d78c7b35157ec, type: 3}
+      propertyPath: rangeColor.g
+      value: 0.28
+      objectReference: {fileID: 0}
+    - target: {fileID: 660128123860892032, guid: 4da85541a0097c34084d78c7b35157ec, type: 3}
       propertyPath: movementRange
       value: 
       objectReference: {fileID: 131016860}
@@ -6140,6 +6152,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   targetCamera: {fileID: 0}
+  visualRoot: {fileID: 867532079}
 --- !u!114 &867532082
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6295,6 +6308,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   targetCamera: {fileID: 0}
+  visualRoot: {fileID: 913834627}
 --- !u!95 &913834630
 Animator:
   serializedVersion: 7
@@ -6726,6 +6740,18 @@ PrefabInstance:
       value: 
       objectReference: {fileID: 924651065}
     - target: {fileID: 6962286237256887116, guid: e0610fd6b7f658a47b107d9fc794185d, type: 3}
+      propertyPath: rangeColor.a
+      value: 0.38
+      objectReference: {fileID: 0}
+    - target: {fileID: 6962286237256887116, guid: e0610fd6b7f658a47b107d9fc794185d, type: 3}
+      propertyPath: rangeColor.b
+      value: 0.28
+      objectReference: {fileID: 0}
+    - target: {fileID: 6962286237256887116, guid: e0610fd6b7f658a47b107d9fc794185d, type: 3}
+      propertyPath: rangeColor.g
+      value: 0.28
+      objectReference: {fileID: 0}
+    - target: {fileID: 6962286237256887116, guid: e0610fd6b7f658a47b107d9fc794185d, type: 3}
       propertyPath: movementRange
       value: 
       objectReference: {fileID: 924651066}
@@ -6926,6 +6952,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   targetCamera: {fileID: 0}
+  visualRoot: {fileID: 998890933}
 --- !u!114 &998890935
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7423,6 +7450,7 @@ MonoBehaviour:
   swapButtonText: "\u9B42\u7A7F"
   lockedButtonColor: {r: 0.42, g: 0.42, b: 0.42, a: 1}
   unlockedButtonColor: {r: 0.16, g: 0.52, b: 1, a: 1}
+  allowSwapImmediately: 0
   overviewBlendDuration: 0.55
   characterBlendDuration: 0.55
 --- !u!114 &1074695559
@@ -7683,6 +7711,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   targetCamera: {fileID: 0}
+  visualRoot: {fileID: 1200264790}
 --- !u!95 &1200264793
 Animator:
   serializedVersion: 7
@@ -7972,6 +8001,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   targetCamera: {fileID: 0}
+  visualRoot: {fileID: 1344278927}
 --- !u!114 &1344278929
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -8514,6 +8544,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   targetCamera: {fileID: 0}
+  visualRoot: {fileID: 1662144077}
 --- !u!95 &1662144079
 Animator:
   serializedVersion: 7
@@ -13570,6 +13601,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   targetCamera: {fileID: 0}
+  visualRoot: {fileID: 2054365349}
 --- !u!114 &2054365351
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -13980,7 +14012,7 @@ Transform:
   m_GameObject: {fileID: 2103653432}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: -0.025}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -14207,6 +14239,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   targetCamera: {fileID: 0}
+  visualRoot: {fileID: 2108463761}
 --- !u!114 &2108463763
 MonoBehaviour:
   m_ObjectHideFlags: 0
