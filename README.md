@@ -2,11 +2,11 @@
 
 > 这是一份始于 2026 年 7 月下旬的精彩回忆，记录了五位因游戏制作结缘的伙伴，在神仙老师的带领下触摸热爱的过程与结果。虽有遗憾，但收获颇丰！
 >
-> 我们会继续完善这个项目。这些在四季更迭里的小小虫，或许未来有一天能与大众相见！
+> 我们会继续完善这个项目。这些在四季更迭里的小小虫，或许未来有一天能与大众相见！给赵老师递茶一万次！
 
 > A memorable journey that began in late July 2026. This project records five companions brought together by game development, guided by an inspiring mentor as we explored what we love and brought it to life. There were regrets, but even more to gain.
 >
-> We will keep improving the project. Perhaps these tiny bugs, born through the changing seasons, will one day meet a wider audience!
+> We will keep improving the project. Perhaps these tiny bugs, born through the changing seasons, will one day meet a wider audience! Salute to lovely Teacher Zhao!
 
 ## 团队 / Team
 
