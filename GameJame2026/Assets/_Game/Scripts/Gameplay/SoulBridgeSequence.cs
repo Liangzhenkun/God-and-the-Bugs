@@ -1,6 +1,7 @@
 using System.Collections;
 using GameJamRAC.Grid;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace GameJamRAC.Gameplay
 {
@@ -32,6 +33,7 @@ namespace GameJamRAC.Gameplay
         [SerializeField, Min(0f)] private float glowRange = 5f;
         [SerializeField, Min(0f)] private float glowIntensity = 6f;
         [SerializeField, Min(0.1f)] private float absorbEatDuration = 1.5f;
+        [SerializeField] private bool enableBridgeStep = true;
 
         private bool bActivated;
         private bool bridgeActive;
@@ -55,6 +57,16 @@ namespace GameJamRAC.Gameplay
         {
             ResolveReferences();
             SetGlow(false, activatedGlowColor);
+
+            // 仅关卡 2 使用 D1 的交互范围来处理 B 的死亡与 A 的吞噬。
+            // 关卡 3 虽然也有 D1，但保留其独立的 SceneThreeBConsumeSequence 规则。
+            if (Application.isPlaying && SceneManager.GetActiveScene().name == "NextScene 2"
+                && GameObject.Find("D1") != null
+                && FindFirstObjectByType<D1BConsumeSequence>() == null)
+            {
+                enableBridgeStep = false;
+                new GameObject("D1BConsumeSequence").AddComponent<D1BConsumeSequence>();
+            }
         }
 
         private void OnEnable()
@@ -64,12 +76,20 @@ namespace GameJamRAC.Gameplay
             if (boardB != null) boardB.InteractiveTileEntered += OnBInteraction;
             if (moverA != null) moverA.onCellReached += OnACellReached;
             if (soulSwapManager != null) soulSwapManager.onStateChanged += OnSoulSwapStateChanged;
+
+            // 主场景中，B 的体力耗尽也要进入与桥接死亡一致的视觉和不可操作状态。
+            if (IsMainScene && characterB != null) characterB.onDied += OnMainSceneBDepleted;
         }
 
-        private void Start()
+        private IEnumerator Start()
         {
             if (soulSwapManager != null)
                 soulSwapManager.SetSoulSwapUnlocked(false);
+
+            // GridUnitMover 也会在 Start 对齐初始位置；等待一帧后，
+            // 用与正常移动相同的规则检测出生格。
+            yield return null;
+            EvaluateInitialAInteraction();
         }
 
         private void OnDisable()
@@ -78,6 +98,34 @@ namespace GameJamRAC.Gameplay
             if (boardB != null) boardB.InteractiveTileEntered -= OnBInteraction;
             if (moverA != null) moverA.onCellReached -= OnACellReached;
             if (soulSwapManager != null) soulSwapManager.onStateChanged -= OnSoulSwapStateChanged;
+            if (IsMainScene && characterB != null) characterB.onDied -= OnMainSceneBDepleted;
+        }
+
+        private bool IsMainScene => SceneManager.GetActiveScene().name == "MainScene";
+
+        /// <summary>
+        /// 主场景补充规则：B 的生命归零时，播放 DieB（BridgeState = 2）并停止移动。
+        /// CharacterUnit 已负责把 B 标记为死亡；这里仅补齐该场景的动画与交互表现。
+        /// </summary>
+        private void OnMainSceneBDepleted(CharacterUnit defeatedCharacter)
+        {
+            if (!IsMainScene || defeatedCharacter != characterB)
+                return;
+
+            bActivated = false;
+            bridgeActive = false;
+            aStandingOnBridge = false;
+            boardA?.ClearTemporaryWalkableCells();
+
+            if (moverB != null)
+            {
+                moverB.SetMoveTargetsVisible(false);
+                moverB.enabled = false;
+            }
+
+            bVisualState?.SetDead();
+            SetGlow(false, activatedGlowColor);
+            soulSwapManager?.SetSoulSwapUnlocked(false);
         }
 
         private void OnAInteraction(string interactionId)
@@ -91,9 +139,18 @@ namespace GameJamRAC.Gameplay
                 soulSwapManager.SetSoulSwapUnlocked(true);
         }
 
+        /// <summary>检测 A 当前的出生格或重置格是否为激活交互格。</summary>
+        public void EvaluateInitialAInteraction()
+        {
+            ResolveReferences();
+            if (bActivated || boardA == null || moverA == null) return;
+            if (boardA.HasInteraction(moverA.CurrentCell))
+                OnAInteraction(string.Empty);
+        }
+
         private void OnBInteraction(string interactionId)
         {
-            if (!bActivated || bridgeActive || boardA == null || boardB == null || moverB == null || characterB == null)
+            if (!enableBridgeStep || !bActivated || bridgeActive || boardA == null || boardB == null || moverB == null || characterB == null)
                 return;
 
             bridgeActive = true;

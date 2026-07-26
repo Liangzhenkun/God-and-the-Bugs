@@ -24,6 +24,7 @@ namespace GameJamRAC.UI
         private GameObject guidePanel;
         private GameObject dialoguePanel;
         private GameObject codexPanel;
+        private GameObject creditsPanel;
         private Text dialogueBody;
         private Text dialogueSpeaker;
         private Image dialoguePortrait;
@@ -37,8 +38,8 @@ namespace GameJamRAC.UI
 
         private void Awake()
         {
-            Text existingText = GetComponentInChildren<Text>(true);
-            font = existingText != null ? existingText.font : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            AudioSettingsState.Apply();
+            font = UIRuntimeFont.Resolve();
             BuildUI();
         }
 
@@ -72,17 +73,20 @@ namespace GameJamRAC.UI
             GameObject root = CreateObject("GameUIHubRuntime", transform);
             Stretch(root.GetComponent<RectTransform>());
             BuildTopBar(root.transform);
+            SoundToggleButton.Create(root.transform);
             settingsPanel = BuildSettings(root.transform);
             mainMenuPanel = BuildMainMenu(root.transform);
             guidePanel = BuildGuide(root.transform);
             dialoguePanel = BuildDialogue(root.transform);
             codexPanel = BuildCodex(root.transform);
+            creditsPanel = BuildCredits(root.transform);
             CloseAll();
         }
 
         private void BuildTopBar(Transform parent)
         {
-            CreateButton(parent, "DialogueButton", "\u5267\u60C5", new Vector2(0f, 1f), new Vector2(212f, -54f), new Vector2(92f, 64f), ShowDialogue);
+            // 与左下角的魂穿按钮左边缘对齐。
+            CreateButton(parent, "DialogueButton", "\u5267\u60C5", new Vector2(0f, 1f), new Vector2(156f, -54f), new Vector2(92f, 64f), ShowDialogue);
             CreateButton(parent, "CodexButton", "\u56FE\u9274", new Vector2(1f, 1f), new Vector2(-250f, -54f), new Vector2(92f, 64f), ShowCodex);
             CreateButton(parent, "HelpButton", "?", new Vector2(1f, 1f), new Vector2(-122f, -54f), new Vector2(64f, 64f), ShowGuide);
             CreateButton(parent, "SettingsButton", "\u2699", new Vector2(1f, 1f), new Vector2(-34f, -54f), new Vector2(64f, 64f), ShowSettings);
@@ -91,19 +95,20 @@ namespace GameJamRAC.UI
 
         private GameObject BuildSettings(Transform parent)
         {
-            GameObject panel = CreatePanel(parent, "SettingsPanel", new Vector2(760f, 500f));
+            GameObject panel = CreatePanel(parent, "SettingsPanel", new Vector2(760f, 440f));
             CreateText(panel.transform, "Title", "\u8BBE\u7F6E", new Vector2(0.5f, 1f), new Vector2(0f, -55f), new Vector2(500f, 60f), 38, TextAnchor.MiddleCenter);
-            CreateButton(panel.transform, "Close", "\u00D7", new Vector2(1f, 1f), new Vector2(-30f, -30f), new Vector2(56f, 56f), CloseAll, new Color(0.85f, 0.18f, 0.18f, 1f));
-            CreateText(panel.transform, "VolumeLabel", "\u97F3\u91CF", new Vector2(0.5f, 0.62f), new Vector2(-130f, 0f), new Vector2(150f, 44f), 28, TextAnchor.MiddleRight);
-            GameObject sliderObject = CreateObject("VolumeSlider", panel.transform, typeof(Slider), typeof(Image));
-            RectTransform sliderRect = sliderObject.GetComponent<RectTransform>();
-            SetRect(sliderRect, new Vector2(0.5f, 0.62f), new Vector2(80f, 0f), new Vector2(320f, 36f));
-            Slider slider = sliderObject.GetComponent<Slider>(); slider.minValue = 0f; slider.maxValue = 1f; slider.value = AudioListener.volume;
-            sliderObject.GetComponent<Image>().color = new Color(0.2f, 0.35f, 0.55f, 0.75f);
-            slider.onValueChanged.AddListener(value => AudioListener.volume = value);
-            CreateButton(panel.transform, "Reset", "\u91CD\u65B0\u5F00\u59CB", new Vector2(0.5f, 0.44f), Vector2.zero, new Vector2(260f, 58f), RestartScene);
-            CreateButton(panel.transform, "MainMenu", "\u8FD4\u56DE\u4E3B\u83DC\u5355", new Vector2(0.5f, 0.30f), Vector2.zero, new Vector2(260f, 58f), ShowMainMenu);
-            CreateButton(panel.transform, "ExitSettings", "\u9000\u51FA\u8BBE\u7F6E", new Vector2(0.5f, 0.16f), Vector2.zero, new Vector2(260f, 58f), CloseAll);
+            CreateButton(panel.transform, "MainMenu", "\u56DE\u5230\u4E3B\u83DC\u5355", new Vector2(0.5f, 0.58f), Vector2.zero, new Vector2(300f, 62f), ReturnToTitle);
+            CreateButton(panel.transform, "ExitGame", "\u9000\u51FA\u6E38\u620F", new Vector2(0.5f, 0.38f), Vector2.zero, new Vector2(300f, 62f), ExitGame);
+            CreateButton(panel.transform, "Credits", "\u5236\u4F5C\u7EC4", new Vector2(0.5f, 0.18f), Vector2.zero, new Vector2(300f, 62f), ShowCredits);
+            return panel;
+        }
+
+        private GameObject BuildCredits(Transform parent)
+        {
+            GameObject panel = CreatePanel(parent, "CreditsPanel", new Vector2(800f, 520f));
+            CreateText(panel.transform, "Title", "\u5236\u4F5C\u7EC4", new Vector2(0.5f, 0.86f), Vector2.zero, new Vector2(500f, 60f), 40, TextAnchor.MiddleCenter);
+            CreateText(panel.transform, "Body", "GameJam RAC\n\n\u7B56\u5212\u4E0E\u5236\u4F5C\uFF1A\u5236\u4F5C\u7EC4\n\u7F8E\u672F\u4E0E\u89D2\u8272\u8BBE\u8BA1\uFF1A\u5236\u4F5C\u7EC4\n\u97F3\u4E50\u4E0E\u97F3\u6548\uFF1A\u5F85\u8865\u5145", new Vector2(0.5f, 0.50f), Vector2.zero, new Vector2(620f, 250f), 28, TextAnchor.MiddleCenter);
+            CreateButton(panel.transform, "Back", "\u8FD4\u56DE\u8BBE\u7F6E", new Vector2(0.5f, 0.14f), Vector2.zero, new Vector2(260f, 58f), ShowSettings);
             return panel;
         }
 
@@ -191,7 +196,17 @@ namespace GameJamRAC.UI
         }
 
         private void ShowMainMenu() { OpenOnly(mainMenuPanel); }
+        private void ShowCredits() { OpenOnly(creditsPanel); }
         private void RestartScene() { Time.timeScale = 1f; SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex); }
+        private void ReturnToTitle() { Time.timeScale = 1f; SceneManager.LoadScene("TitleScene"); }
+        private void ExitGame()
+        {
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
+        }
         private void OpenOnly(GameObject panel) { CloseAll(); panel.SetActive(true); Time.timeScale = 0f; }
         private void CloseAll()
         {
@@ -200,6 +215,7 @@ namespace GameJamRAC.UI
             if (guidePanel != null) guidePanel.SetActive(false);
             if (dialoguePanel != null) dialoguePanel.SetActive(false);
             if (codexPanel != null) codexPanel.SetActive(false);
+            if (creditsPanel != null) creditsPanel.SetActive(false);
             Time.timeScale = 1f;
         }
 

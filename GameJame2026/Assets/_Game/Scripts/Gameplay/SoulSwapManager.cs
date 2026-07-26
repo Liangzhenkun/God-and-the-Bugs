@@ -239,9 +239,11 @@ namespace GameJamRAC.Gameplay
                 return false;
 
             SceneThreeBConsumeSequence sceneThreeConsume = FindFirstObjectByType<SceneThreeBConsumeSequence>();
-            return sceneThreeConsume == null
-                || index != 1
-                || !sceneThreeConsume.IsBUnavailable;
+            if (sceneThreeConsume != null && index == 1 && sceneThreeConsume.IsBUnavailable)
+                return false;
+
+            D1BConsumeSequence d1Consume = FindFirstObjectByType<D1BConsumeSequence>();
+            return d1Consume == null || index != 1 || !d1Consume.IsBUnavailable;
         }
 
         private int GetOtherCharacterIndex()

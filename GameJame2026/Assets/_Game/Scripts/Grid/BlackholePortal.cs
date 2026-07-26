@@ -71,9 +71,15 @@ namespace GameJamRAC.Grid
         private void ResolveReferences()
         {
             if (portalTilemap == null) portalTilemap = GetComponent<Tilemap>();
-            if (board == null) board = GetComponentInParent<GridBoard>();
-            if (mover == null && board != null && board.Owner != null)
-                mover = board.Owner.GetComponent<GridUnitMover>();
+            // 传送层跟随其父 RouteGrid。复制 BlackHole_A 后只要改挂到另一个角色的
+            // RouteGrid 下，就会自动重新绑定那个角色，避免保留旧角色 A 的引用。
+            GridBoard parentBoard = GetComponentInParent<GridBoard>();
+            if (parentBoard != null) board = parentBoard;
+
+            GridUnitMover ownerMover = board != null && board.Owner != null
+                ? board.Owner.GetComponent<GridUnitMover>()
+                : null;
+            if (ownerMover != null) mover = ownerMover;
         }
     }
 }

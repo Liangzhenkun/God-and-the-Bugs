@@ -103,8 +103,12 @@ namespace GameJamRAC.Gameplay
             bAwaitingConsumption = false;
             if (moverA != null) moverA.enabled = true;
             if (moverB != null) moverB.enabled = true;
+            // A 死亡后的复活等待期间，不允许已经被吃掉的 B 因通用重置而闪现。
+            // 等 CharacterRespawnFlow 在等待结束后统一恢复所有角色时，B 才回到初始位置显示。
             if (revealCharacterB)
                 characterB?.SetPresentationVisible(true);
+            else
+                characterB?.SetPresentationVisible(false);
             characterB?.SetVisualDeath(false);
             bVisualState?.SetIdle();
             aVisualState?.RefreshLifeState();

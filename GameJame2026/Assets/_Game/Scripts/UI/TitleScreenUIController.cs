@@ -38,8 +38,6 @@ namespace GameJamRAC.UI
         [SerializeField] private GameObject gameplayOverlay;
 
         [Header("音量控制（自动查找）")]
-        [SerializeField] private Slider volumeSlider;
-        [SerializeField] private Toggle muteToggle;
 
         [Header("流程配置")]
         [SerializeField] private string gameplaySceneName = "";
@@ -50,6 +48,9 @@ namespace GameJamRAC.UI
             if (!Application.isPlaying) return;
             EnsureEventSystem();
             ResolveReferences();
+            AudioSettingsState.Apply();
+            UIRuntimeFont.ApplyTo(targetCanvas != null ? targetCanvas.transform : null);
+            SoundToggleButton.Create(targetCanvas != null ? targetCanvas.transform : transform);
             WireAllButtons();
         }
 
@@ -85,11 +86,6 @@ namespace GameJamRAC.UI
             settingsOverlay = FindChild(root.gameObject, "SettingsOverlay");
             gameplayOverlay = FindChild(root.gameObject, "GameplayOverlay");
 
-            if (settingsOverlay != null)
-            {
-                volumeSlider = settingsOverlay.GetComponentInChildren<Slider>(true);
-                muteToggle = settingsOverlay.GetComponentInChildren<Toggle>(true);
-            }
         }
 
         /// <summary>
@@ -114,21 +110,10 @@ namespace GameJamRAC.UI
 
             // 各弹窗的关闭按钮
             WireDeepButton(creditsOverlay, "CreditsCloseButton", CloseAllOverlays);
-            WireDeepButton(settingsOverlay, "SettingsCloseButton", CloseAllOverlays);
             WireDeepButton(gameplayOverlay, "BackToTitleButton", ShowTitle);
 
             // 音量控件
-            if (muteToggle != null)
-            {
-                muteToggle.onValueChanged.RemoveAllListeners();
-                muteToggle.onValueChanged.AddListener(OnMuteChanged);
-            }
-            if (volumeSlider != null)
-            {
-                volumeSlider.onValueChanged.RemoveAllListeners();
-                volumeSlider.onValueChanged.AddListener(OnVolumeChanged);
-            }
-            ApplyVolume();
+            ConfigureSettingsOverlay();
         }
 
         // ── 按钮回调 ────────────────────────
@@ -191,14 +176,82 @@ namespace GameJamRAC.UI
 
         // ── 内部工具方法 ────────────────────
 
-        private void OnMuteChanged(bool _) => ApplyVolume();
-        private void OnVolumeChanged(float _) => ApplyVolume();
-
-        private void ApplyVolume()
+        private void ConfigureSettingsOverlay()
         {
-            float volume = volumeSlider != null ? volumeSlider.value : 1f;
-            if (muteToggle != null && muteToggle.isOn) volume = 0f;
-            AudioListener.volume = volume;
+            if (settingsOverlay == null) return;
+
+            Transform existing = settingsOverlay.transform.Find("SimpleSettingsContent");
+            if (existing != null)
+            {
+                existing.gameObject.SetActive(true);
+                return;
+            }
+
+            foreach (Transform child in settingsOverlay.transform)
+                child.gameObject.SetActive(false);
+
+            GameObject content = CreateObject("SimpleSettingsContent", settingsOverlay.transform, typeof(Image));
+            content.GetComponent<Image>().color = new Color(0.05f, 0.08f, 0.16f, 0.80f);
+            Stretch(content.GetComponent<RectTransform>());
+            GameObject card = CreateObject("Card", content.transform, typeof(Image));
+            card.GetComponent<Image>().color = new Color(0.96f, 0.98f, 1f, 0.96f);
+            SetRect(card.GetComponent<RectTransform>(), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(620f, 440f));
+            CreateText(card.transform, "Title", "\u8BBE\u7F6E", new Vector2(0.5f, 0.84f), Vector2.zero, new Vector2(420f, 60f), 38, TextAnchor.MiddleCenter);
+            CreateButton(card.transform, "MainMenu", "\u56DE\u5230\u4E3B\u83DC\u5355", new Vector2(0.5f, 0.59f), Vector2.zero, new Vector2(280f, 58f), CloseAllOverlays);
+            CreateButton(card.transform, "ExitGame", "\u9000\u51FA\u6E38\u620F", new Vector2(0.5f, 0.39f), Vector2.zero, new Vector2(280f, 58f), ExitGame);
+            CreateButton(card.transform, "Credits", "\u5236\u4F5C\u7EC4", new Vector2(0.5f, 0.19f), Vector2.zero, new Vector2(280f, 58f), OpenCredits);
+        }
+
+        private static GameObject CreateObject(string name, Transform parent, params System.Type[] components)
+        {
+            GameObject gameObject = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer));
+            foreach (System.Type component in components) gameObject.AddComponent(component);
+            gameObject.transform.SetParent(parent, false);
+            return gameObject;
+        }
+
+        private static void Stretch(RectTransform rect)
+        {
+            rect.anchorMin = Vector2.zero;
+            rect.anchorMax = Vector2.one;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+        }
+
+        private static void SetRect(RectTransform rect, Vector2 anchor, Vector2 position, Vector2 size)
+        {
+            rect.anchorMin = anchor;
+            rect.anchorMax = anchor;
+            rect.pivot = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = position;
+            rect.sizeDelta = size;
+        }
+
+        private static Text CreateText(Transform parent, string name, string value, Vector2 anchor, Vector2 position, Vector2 size, int fontSize, TextAnchor alignment)
+        {
+            GameObject textObject = CreateObject(name, parent, typeof(Text));
+            Text text = textObject.GetComponent<Text>();
+            text.font = UIRuntimeFont.Resolve();
+            text.text = value;
+            text.fontSize = fontSize;
+            text.alignment = alignment;
+            text.color = new Color(0.12f, 0.16f, 0.23f, 1f);
+            text.horizontalOverflow = HorizontalWrapMode.Wrap;
+            text.verticalOverflow = VerticalWrapMode.Overflow;
+            SetRect(text.rectTransform, anchor, position, size);
+            return text;
+        }
+
+        private static Button CreateButton(Transform parent, string name, string label, Vector2 anchor, Vector2 position, Vector2 size, UnityEngine.Events.UnityAction action)
+        {
+            GameObject buttonObject = CreateObject(name, parent, typeof(Image), typeof(Button));
+            buttonObject.GetComponent<Image>().color = new Color(0.18f, 0.47f, 0.78f, 0.94f);
+            SetRect(buttonObject.GetComponent<RectTransform>(), anchor, position, size);
+            Button button = buttonObject.GetComponent<Button>();
+            button.onClick.AddListener(action);
+            Text text = CreateText(buttonObject.transform, "Label", label, new Vector2(0.5f, 0.5f), Vector2.zero, size, 25, TextAnchor.MiddleCenter);
+            text.color = Color.white;
+            return button;
         }
 
         private static void SetActive(GameObject go, bool active)

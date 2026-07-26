@@ -1,6 +1,8 @@
 using System.Collections;
+using System.Collections.Generic;
 using GameJamRAC.Grid;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace GameJamRAC.Gameplay
 {
@@ -16,6 +18,7 @@ namespace GameJamRAC.Gameplay
         [SerializeField] private Animator animator;
         [SerializeField] private string idleStateName = "idlewalk D";
         [SerializeField] private string eatStateName = "eatD";
+        [SerializeField] private string deadStateName = "die D";
         [SerializeField, Min(0.1f)] private float eatDuration = 1.5f;
 
         private CharacterUnit predator;
@@ -27,6 +30,17 @@ namespace GameJamRAC.Gameplay
             predator = GetComponent<CharacterUnit>();
             mover = GetComponent<GridUnitMover>();
             if (animator == null) animator = GetComponentInChildren<Animator>(true);
+        }
+
+        private void OnEnable()
+        {
+            if (predator == null) predator = GetComponent<CharacterUnit>();
+            if (predator != null) predator.onDied += OnPredatorDied;
+        }
+
+        private void OnDisable()
+        {
+            if (predator != null) predator.onDied -= OnPredatorDied;
         }
 
         public IEnumerator TakeTurn()
@@ -49,9 +63,15 @@ namespace GameJamRAC.Gameplay
 
             if (!IsCardinalAdjacent(predatorCell, targetCell) && predatorCell != targetCell)
             {
-                Vector3Int nextCell = GetNextCell(predatorCell, targetCell, out int lifeCost);
-                if (mover.TryMoveToCellAsAi(nextCell, lifeCost))
+                // 先按直追规则行动；若道路被障碍截断，则从相邻的水平/垂直格绕开。
+                // 每个候选都交给 GridUnitMover 复核，因此不会走出自己的道路层。
+                foreach (MoveOption option in GetMoveOptions(predatorCell, targetCell))
+                {
+                    if (!mover.TryMoveToCellAsAi(option.cell, option.lifeCost)) continue;
+
                     yield return new WaitWhile(() => mover.IsMoving);
+                    break;
+                }
             }
 
             if (predator.IsDead)
@@ -66,13 +86,35 @@ namespace GameJamRAC.Gameplay
             predatorCell = mover.CurrentCell;
             targetCell = mover.Board.WorldToCell(target.transform.position);
             if (targetCell == predatorCell || IsCardinalAdjacent(predatorCell, targetCell))
-                yield return EatTarget();
+            {
+                // 场景三中，捕食已经在移动完成后成立；吃动画只作为表现，
+                // 不再占住整轮回合，避免玩家控制 B 时被 1.5 秒动画卡住。
+                if (SceneManager.GetActiveScene().name == "NextScene 3")
+                    StartCoroutine(EatTarget());
+                else
+                    yield return EatTarget();
+            }
         }
 
         public void ResetState()
         {
             resolving = false;
+            if (mover != null) mover.enabled = true;
             PlayIdle();
+        }
+
+        private void OnPredatorDied(CharacterUnit deadPredator)
+        {
+            if (deadPredator != predator) return;
+
+            // D 的生命归零后只保留死亡画面；停止该回合的追击和后续自动移动。
+            resolving = false;
+            if (mover != null)
+            {
+                mover.StopAllCoroutines();
+                mover.enabled = false;
+            }
+            if (animator != null) animator.Play(deadStateName, 0, 0f);
         }
 
         private IEnumerator EatTarget()
@@ -122,24 +164,53 @@ namespace GameJamRAC.Gameplay
             return Mathf.Abs(from.x - to.x) + Mathf.Abs(from.y - to.y) == 1;
         }
 
-        private static Vector3Int GetNextCell(Vector3Int from, Vector3Int to, out int lifeCost)
+        private static IEnumerable<MoveOption> GetMoveOptions(Vector3Int from, Vector3Int to)
         {
             int dx = to.x - from.x;
             int dy = to.y - from.y;
             int absX = Mathf.Abs(dx);
             int absY = Mathf.Abs(dy);
+            int stepX = dx == 0 ? 0 : (dx > 0 ? 1 : -1);
+            int stepY = dy == 0 ? 0 : (dy > 0 ? 1 : -1);
 
-            // Diagonal movement is only used while the prey is not a neighbouring diagonal cell.
+            // 原始追击优先级：非相邻的斜向目标优先走斜向，直线目标优先直走。
             if (dx != 0 && dy != 0 && !(absX == 1 && absY == 1))
             {
-                lifeCost = 2;
-                return from + new Vector3Int(dx > 0 ? 1 : -1, dy > 0 ? 1 : -1, 0);
+                yield return new MoveOption(from + new Vector3Int(stepX, stepY, 0), 2);
+
+                // 斜角格被堵时，改从两个相邻的正交格择一绕行。
+                yield return new MoveOption(from + new Vector3Int(stepX, 0, 0), 1);
+                yield return new MoveOption(from + new Vector3Int(0, stepY, 0), 1);
+                yield break;
             }
 
-            lifeCost = 1;
             if (absX >= absY && dx != 0)
-                return from + new Vector3Int(dx > 0 ? 1 : -1, 0, 0);
-            return from + new Vector3Int(0, dy > 0 ? 1 : -1, 0);
+            {
+                yield return new MoveOption(from + new Vector3Int(stepX, 0, 0), 1);
+                // 直线被堵时，先向两侧横移一格，再由下一回合重新朝目标前进。
+                yield return new MoveOption(from + new Vector3Int(0, 1, 0), 1);
+                yield return new MoveOption(from + new Vector3Int(0, -1, 0), 1);
+                yield break;
+            }
+
+            if (dy != 0)
+            {
+                yield return new MoveOption(from + new Vector3Int(0, stepY, 0), 1);
+                yield return new MoveOption(from + new Vector3Int(1, 0, 0), 1);
+                yield return new MoveOption(from + new Vector3Int(-1, 0, 0), 1);
+            }
+        }
+
+        private readonly struct MoveOption
+        {
+            public readonly Vector3Int cell;
+            public readonly int lifeCost;
+
+            public MoveOption(Vector3Int cell, int lifeCost)
+            {
+                this.cell = cell;
+                this.lifeCost = lifeCost;
+            }
         }
     }
 }

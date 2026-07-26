@@ -58,11 +58,14 @@ namespace GameJamRAC.Gameplay
             soulBridgeSequence?.ResetSequence();
             foreach (SceneThreeBConsumeSequence sequence in FindObjectsByType<SceneThreeBConsumeSequence>(FindObjectsSortMode.None))
                 sequence.ResetSequence(false);
+            foreach (D1BConsumeSequence sequence in FindObjectsByType<D1BConsumeSequence>(FindObjectsSortMode.None))
+                sequence.ResetSequence(false);
             foreach (PredatorAI predator in FindObjectsByType<PredatorAI>(FindObjectsSortMode.None))
                 predator.ResetState();
             soulSwapManager?.ResetProgressForRespawn();
             yield return new WaitForSeconds(Mathf.Max(1f, respawnDelay));
             ResetAllCharactersToInitialState();
+            soulBridgeSequence?.EvaluateInitialAInteraction();
             if (soulSwapManager != null)
             {
                 soulSwapManager.RestoreInitialControlAfterRespawn();

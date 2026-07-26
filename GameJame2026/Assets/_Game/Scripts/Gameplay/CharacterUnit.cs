@@ -65,6 +65,13 @@ namespace GameJamRAC.Gameplay
         public CharacterUnit SoulTransferTarget => soulTransferTarget;
         public event Action<CharacterUnit> onDied;
 
+        /// <summary>设置本局出生生命值；在角色 Start 前调用时会直接作为开局数值。</summary>
+        public void SetInitialLife(int value)
+        {
+            initialLife = Mathf.Max(0, value);
+            if (!Application.isPlaying) OnValidate();
+        }
+
         private void Awake()
         {
             rb = GetComponent<Rigidbody>();
