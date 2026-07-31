@@ -9,7 +9,7 @@ namespace GameJamRAC.Gameplay
     {
         [SerializeField] private CharacterUnit[] characters;
         [SerializeField] private SoulSwapManager soulSwapManager;
-        [SerializeField] private VictoryFlowManager victoryFlowManager;
+        [SerializeField] private GameplaySceneManager gameplaySceneManager;
         [SerializeField] private SoulBridgeSequence soulBridgeSequence;
         [SerializeField, Min(1f)] private float respawnDelay = 1f;
 
@@ -20,7 +20,7 @@ namespace GameJamRAC.Gameplay
             if (characters == null || characters.Length == 0)
                 characters = FindObjectsByType<CharacterUnit>(FindObjectsSortMode.None);
             if (soulSwapManager == null) soulSwapManager = FindFirstObjectByType<SoulSwapManager>();
-            if (victoryFlowManager == null) victoryFlowManager = FindFirstObjectByType<VictoryFlowManager>();
+            if (gameplaySceneManager == null) gameplaySceneManager = FindFirstObjectByType<GameplaySceneManager>();
             if (soulBridgeSequence == null) soulBridgeSequence = FindFirstObjectByType<SoulBridgeSequence>();
         }
 
@@ -40,7 +40,7 @@ namespace GameJamRAC.Gameplay
         {
             if (character == null || respawning.Contains(character)) return;
             if (character.SuppressAutomaticRespawnOnDeath) return;
-            if (victoryFlowManager != null && victoryFlowManager.HasWon) return;
+            if (gameplaySceneManager != null && gameplaySceneManager.HasWon) return;
 
             // B 被吃掉并不代表本局失败；若当时操控 B，交还给 A 后继续。
             if (soulSwapManager != null && soulSwapManager.RecoverToAAfterBDefeated(character))

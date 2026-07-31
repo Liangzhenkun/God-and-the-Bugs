@@ -23,7 +23,8 @@ namespace GameJamRAC.Gameplay
         private Coroutine consumeCoroutine;
 
         public bool IsResolving => resolving;
-        public bool IsBUnavailable => bAwaitingConsumption || resolving || (characterB != null && characterB.IsDead);
+        public bool IsBUnavailable => bAwaitingConsumption || resolving
+            || (characterB != null && (characterB.IsDead || characterB.IsVisuallyDead));
 
         /// <summary>B 在激活格进入视觉死亡后，不再是捕食者可结算的目标。</summary>
         public bool IsUnavailableAsPrey(CharacterUnit candidate)

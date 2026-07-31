@@ -5,15 +5,16 @@ namespace GameJamRAC.UI
     /// <summary>统一保存并应用标题与关卡共用的声音设置。</summary>
     public static class AudioSettingsState
     {
-        private const string VolumeKey = "GameJamRAC.AudioVolume";
+        private const string VolumeKey = "GameJamRAC.AudioVolume.v2";
         private const string SoundEnabledKey = "GameJamRAC.SoundEnabled";
+        private const float DefaultVolume = 0.35f;
 
-        public static float Volume => Mathf.Clamp01(PlayerPrefs.GetFloat(VolumeKey, 1f));
+        public static float Volume => Mathf.Clamp01(PlayerPrefs.GetFloat(VolumeKey, DefaultVolume));
         public static bool SoundEnabled => PlayerPrefs.GetInt(SoundEnabledKey, 1) == 1;
 
         public static void ToggleSound()
         {
-            Set(1f, !SoundEnabled);
+            Set(Volume, !SoundEnabled);
         }
 
         public static void Set(float volume, bool soundEnabled)

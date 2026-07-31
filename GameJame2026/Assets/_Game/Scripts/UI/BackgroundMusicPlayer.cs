@@ -9,7 +9,7 @@ namespace GameJamRAC.UI
         private static BackgroundMusicPlayer instance;
 
         [SerializeField] private AudioClip musicClip;
-        [SerializeField, Range(0f, 1f)] private float volume = 0.65f;
+        [SerializeField, Range(0f, 1f)] private float volume = 0.35f;
 
         private AudioSource source;
 
@@ -30,6 +30,7 @@ namespace GameJamRAC.UI
             source.playOnAwake = false;
             source.spatialBlend = 0f;
             source.volume = volume;
+            AudioSettingsState.Apply();
             if (source.clip != null && !source.isPlaying) source.Play();
         }
 

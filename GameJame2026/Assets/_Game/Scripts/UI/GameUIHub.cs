@@ -20,10 +20,14 @@ namespace GameJamRAC.UI
             if (ui == null) ui = GetComponentInChildren<GameplayUIReferences>(true);
             if (ui == null)
             {
+                Canvas fallbackCanvas = GetComponentInParent<Canvas>();
+                if (fallbackCanvas == null) fallbackCanvas = FindFirstObjectByType<Canvas>();
+                SoundToggleButton.Create(fallbackCanvas != null ? fallbackCanvas.transform : null);
                 Debug.LogWarning("GameplayUIReferences is missing. Use GameJam/UI/Create Editable Gameplay UI.");
                 return;
             }
 
+            EnsureSoundToggle();
             WireButtons();
             CloseAll();
         }
@@ -70,6 +74,15 @@ namespace GameJamRAC.UI
             AddClick(ui.GuideCloseButton, CloseAll);
             AddClick(ui.CodexCloseButton, CloseAll);
             AddClick(ui.CreditsCloseButton, CloseAll);
+        }
+
+        private void EnsureSoundToggle()
+        {
+            if (ui.SoundToggle != null) return;
+
+            Canvas canvas = ui.GetComponentInParent<Canvas>();
+            Transform parent = canvas != null ? canvas.transform : ui.transform;
+            SoundToggleButton.Create(parent);
         }
 
         private static void AddClick(UnityEngine.UI.Button button, UnityEngine.Events.UnityAction action)

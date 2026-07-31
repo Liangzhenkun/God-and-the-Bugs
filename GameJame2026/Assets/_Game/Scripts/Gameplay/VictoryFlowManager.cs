@@ -11,6 +11,7 @@ namespace GameJamRAC.Gameplay
     {
         [SerializeField] private GameObject victoryPanel;
         [SerializeField] private Button nextLevelButton;
+        [SerializeField] private SceneFlowManager sceneFlowManager;
         [SerializeField] private string nextSceneName = "NextScene 3";
 
         [Header("最终关奖励")]
@@ -24,10 +25,14 @@ namespace GameJamRAC.Gameplay
         private Font uiFont;
 
         public bool HasWon => hasWon;
-        private bool IsFinalScene => SceneManager.GetActiveScene().name == finalSceneName;
+        private bool IsFinalScene => sceneFlowManager != null
+            ? sceneFlowManager.IsFinalScene
+            : SceneManager.GetActiveScene().name == finalSceneName;
 
         private void Awake()
         {
+            ResolveSceneReferences();
+
             uiFont = UIRuntimeFont.Resolve();
             if (victoryPanel != null)
             {
@@ -37,7 +42,9 @@ namespace GameJamRAC.Gameplay
 
             if (nextLevelButton != null)
             {
-                nextLevelButton.onClick.AddListener(LoadNextLevel);
+                if (nextLevelButton.onClick.GetPersistentEventCount() == 0)
+                    nextLevelButton.onClick.AddListener(LoadNextLevel);
+
                 if (IsFinalScene)
                     SetButtonLabel(nextLevelButton, "确定");
             }
@@ -47,6 +54,28 @@ namespace GameJamRAC.Gameplay
 
             if (certificatePanel != null)
                 certificatePanel.SetActive(false);
+        }
+
+        private void ResolveSceneReferences()
+        {
+            if (sceneFlowManager == null)
+                sceneFlowManager = SceneFlowManager.GetOrCreate();
+
+            if (victoryPanel == null)
+                victoryPanel = FindSceneObject("VictoryPanel");
+
+            if (nextLevelButton == null)
+            {
+                if (victoryPanel != null)
+                    nextLevelButton = FindButtonInChildren(victoryPanel.transform, "NextLevelButton");
+
+                if (nextLevelButton == null)
+                {
+                    GameObject buttonObject = FindSceneObject("NextLevelButton");
+                    if (buttonObject != null)
+                        nextLevelButton = buttonObject.GetComponent<Button>();
+                }
+            }
         }
 
         private void OnValidate()
@@ -60,12 +89,6 @@ namespace GameJamRAC.Gameplay
         {
             if (Application.isPlaying || certificatePanel != null) return;
             CreateCertificatePanelInCanvas();
-        }
-
-        private void OnDestroy()
-        {
-            if (nextLevelButton != null)
-                nextLevelButton.onClick.RemoveListener(LoadNextLevel);
         }
 
         public void Win()
@@ -101,6 +124,12 @@ namespace GameJamRAC.Gameplay
             if (IsFinalScene)
             {
                 ShowCertificatePanel();
+                return;
+            }
+
+            if (sceneFlowManager != null)
+            {
+                sceneFlowManager.LoadNextLevel();
                 return;
             }
 
@@ -152,8 +181,13 @@ namespace GameJamRAC.Gameplay
 
         private void ReturnToTitle()
         {
-            Time.timeScale = 1f;
-            SceneManager.LoadScene("TitleScene");
+            if (sceneFlowManager != null)
+                sceneFlowManager.ReturnToTitle();
+            else
+            {
+                Time.timeScale = 1f;
+                SceneManager.LoadScene("TitleScene");
+            }
         }
 
         private GameObject CreateOverlay(Transform parent, string name)
@@ -219,6 +253,28 @@ namespace GameJamRAC.Gameplay
         {
             Text text = button.GetComponentInChildren<Text>(true);
             if (text != null) text.text = value;
+        }
+
+        private static GameObject FindSceneObject(string objectName)
+        {
+            foreach (Transform transform in FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (transform.name == objectName)
+                    return transform.gameObject;
+            }
+
+            return null;
+        }
+
+        private static Button FindButtonInChildren(Transform root, string objectName)
+        {
+            foreach (Button button in root.GetComponentsInChildren<Button>(true))
+            {
+                if (button.name == objectName)
+                    return button;
+            }
+
+            return null;
         }
 
         private static void SetRect(RectTransform rect, Vector2 anchor, Vector2 position, Vector2 size)

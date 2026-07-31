@@ -58,10 +58,10 @@ namespace GameJamRAC.Gameplay
             ResolveReferences();
             SetGlow(false, activatedGlowColor);
 
-            // 仅关卡 2 使用 D1 的交互范围来处理 B 的死亡与 A 的吞噬。
-            // 关卡 3 虽然也有 D1，但保留其独立的 SceneThreeBConsumeSequence 规则。
-            if (Application.isPlaying && SceneManager.GetActiveScene().name == "NextScene 2"
+            // 只要当前场景没有独立的第三段规则，就用 D1 的交互范围处理 B 的死亡与 A 的吞噬。
+            if (Application.isPlaying
                 && GameObject.Find("D1") != null
+                && FindFirstObjectByType<SceneThreeBConsumeSequence>() == null
                 && FindFirstObjectByType<D1BConsumeSequence>() == null)
             {
                 enableBridgeStep = false;

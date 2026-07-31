@@ -126,7 +126,7 @@ namespace GameJamRAC.Gameplay
 
         private void Update()
         {
-            if (isPlayerControlled && !isDead)
+            if (isPlayerControlled && !isDead && !isVisuallyDead)
                 ReadGridInput();
         }
 
@@ -154,9 +154,9 @@ namespace GameJamRAC.Gameplay
             ExitGoal exitGoal = FindFirstObjectByType<ExitGoal>();
             if (exitGoal == null || !exitGoal.ContainsWorldPosition(transform.position)) return;
 
-            VictoryFlowManager victoryFlow = FindFirstObjectByType<VictoryFlowManager>();
-            if (victoryFlow != null)
-                victoryFlow.Win();
+            GameplaySceneManager sceneManager = GameplaySceneManager.GetActive();
+            if (sceneManager != null)
+                sceneManager.Win();
         }
 
         /// <summary>将当前剩余生命全部交给指定角色，源角色死亡。</summary>
@@ -242,6 +242,10 @@ namespace GameJamRAC.Gameplay
         public void SetVisualDeath(bool value)
         {
             isVisuallyDead = value;
+            if (value)
+                ReleaseControl();
+
+            UpdateLifeLabel();
         }
 
         private void UpdateLifeLabel()
@@ -262,7 +266,7 @@ namespace GameJamRAC.Gameplay
 
         public void TakeControl()
         {
-            if (!isDead)
+            if (!isDead && !isVisuallyDead)
             {
                 isPlayerControlled = true;
                 gridMover.SetMoveTargetsVisible(true);

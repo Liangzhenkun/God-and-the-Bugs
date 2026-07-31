@@ -3,20 +3,30 @@ using UnityEngine.UI;
 
 namespace GameJamRAC.UI
 {
-    /// <summary>Scene-authored sound toggle. Icon and sprites are assigned in the Inspector.</summary>
+    /// <summary>Scene-authored global sound toggle.</summary>
     [DisallowMultipleComponent]
     public class SoundToggleButton : MonoBehaviour
     {
         [SerializeField] private Image icon;
         [SerializeField] private Sprite soundOnSprite;
         [SerializeField] private Sprite soundOffSprite;
+        [SerializeField] private bool replaceExistingOnClick = true;
 
         private Button button;
 
         private void Awake()
         {
             button = GetComponent<Button>();
-            if (button != null) button.onClick.AddListener(ToggleSound);
+            ResolveReferences();
+
+            if (button != null)
+            {
+                if (replaceExistingOnClick)
+                    button.onClick = new Button.ButtonClickedEvent();
+
+                button.onClick.AddListener(ToggleSound);
+            }
+
             RefreshIcon();
         }
 
@@ -34,10 +44,15 @@ namespace GameJamRAC.UI
             soundOffSprite = newSoundOffSprite;
         }
 
-        // 兼容旧场景调用：只查找已存在的层级组件，不再创建任何运行时 UI。
         public static SoundToggleButton Create(Transform parent)
         {
-            return parent != null ? parent.GetComponentInChildren<SoundToggleButton>(true) : null;
+            if (parent == null) return null;
+
+            SoundToggleButton existing = parent.GetComponentInChildren<SoundToggleButton>(true);
+            if (existing != null) return existing;
+
+            Transform volumeTransform = parent.Find("音量");
+            return volumeTransform != null ? volumeTransform.GetComponent<SoundToggleButton>() : null;
         }
 
         private void ToggleSound()
@@ -48,10 +63,25 @@ namespace GameJamRAC.UI
 
         private void RefreshIcon()
         {
+            ResolveReferences();
             if (icon == null) return;
+
             icon.sprite = AudioSettingsState.SoundEnabled ? soundOnSprite : soundOffSprite;
             icon.preserveAspect = true;
             icon.color = Color.white;
+        }
+
+        private void ResolveReferences()
+        {
+            if (icon == null) icon = GetComponent<Image>();
+            if (soundOnSprite == null) soundOnSprite = LoadSprite("UI/sounds on");
+            if (soundOffSprite == null) soundOffSprite = LoadSprite("UI/mute");
+        }
+
+        private static Sprite LoadSprite(string resourcePath)
+        {
+            Sprite[] sprites = Resources.LoadAll<Sprite>(resourcePath);
+            return sprites != null && sprites.Length > 0 ? sprites[0] : Resources.Load<Sprite>(resourcePath);
         }
     }
 }
