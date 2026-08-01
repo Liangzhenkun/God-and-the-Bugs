@@ -2,17 +2,17 @@ using System.Collections;
 using System.Collections.Generic;
 using GameJamRAC.Grid;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 namespace GameJamRAC.Gameplay
 {
-    /// <summary>One-step predator AI. Assign a prey target in the Inspector.</summary>
+    /// <summary>捕食者 AI：按目标列表顺序，在自己的领地内寻路追踪猎物。</summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(CharacterUnit), typeof(GridUnitMover))]
     public class PredatorAI : MonoBehaviour
     {
         [Header("捕食目标")]
-        [SerializeField] private CharacterUnit target;
+        [SerializeField] private CharacterUnit[] targets;
+        [SerializeField, HideInInspector] private CharacterUnit target;
 
         [Header("动画")]
         [SerializeField] private Animator animator;
@@ -21,12 +21,44 @@ namespace GameJamRAC.Gameplay
         [SerializeField] private string deadStateName = "die D";
         [SerializeField, Min(0.1f)] private float eatDuration = 1.5f;
 
+        [Header("感知范围")]
+        [SerializeField] private bool requireTargetOnOwnBoard = true;
+        [SerializeField] private bool includeInteractionTilesInTerritory = true;
+        [SerializeField, Min(0)] private int maxSearchSteps = 0;
+
+        private static readonly Vector3Int[] CardinalDirections =
+        {
+            Vector3Int.right,
+            Vector3Int.left,
+            Vector3Int.up,
+            Vector3Int.down
+        };
+
+        private static readonly Vector3Int[] SearchDirections =
+        {
+            Vector3Int.right,
+            Vector3Int.left,
+            Vector3Int.up,
+            Vector3Int.down,
+            new Vector3Int(1, 1, 0),
+            new Vector3Int(1, -1, 0),
+            new Vector3Int(-1, 1, 0),
+            new Vector3Int(-1, -1, 0)
+        };
+
         private CharacterUnit predator;
         private GridUnitMover mover;
+        private CharacterUnit resolvingTarget;
         private bool resolving;
+
+        private void OnValidate()
+        {
+            MigrateLegacyTarget();
+        }
 
         private void Awake()
         {
+            MigrateLegacyTarget();
             predator = GetComponent<CharacterUnit>();
             mover = GetComponent<GridUnitMover>();
             if (animator == null) animator = GetComponentInChildren<Animator>(true);
@@ -52,52 +84,43 @@ namespace GameJamRAC.Gameplay
             if (resolving || predator == null || predator.IsDead)
                 yield break;
 
-            if (!CanEatTarget())
+            if (!TryGetTargetCellInTerritory(out CharacterUnit activeTarget, out Vector3Int targetCell))
             {
                 PlayIdle();
                 yield break;
             }
 
             Vector3Int predatorCell = mover.CurrentCell;
-            Vector3Int targetCell = mover.Board.WorldToCell(target.transform.position);
-
             if (!IsCardinalAdjacent(predatorCell, targetCell) && predatorCell != targetCell)
             {
-                // 先按直追规则行动；若道路被障碍截断，则从相邻的水平/垂直格绕开。
-                // 每个候选都交给 GridUnitMover 复核，因此不会走出自己的道路层。
-                foreach (MoveOption option in GetMoveOptions(predatorCell, targetCell))
+                if (TryFindNextMove(predatorCell, targetCell, out MoveOption option)
+                    && mover.TryMoveToCellAsAi(option.cell, option.lifeCost))
                 {
-                    if (!mover.TryMoveToCellAsAi(option.cell, option.lifeCost)) continue;
-
                     yield return new WaitWhile(() => mover.IsMoving);
-                    break;
                 }
             }
 
             if (predator.IsDead)
                 yield break;
 
-            if (!CanEatTarget())
+            if (!TryGetTargetCellInTerritory(out activeTarget, out targetCell))
             {
                 PlayIdle();
                 yield break;
             }
 
             predatorCell = mover.CurrentCell;
-            targetCell = mover.Board.WorldToCell(target.transform.position);
             if (targetCell == predatorCell || IsCardinalAdjacent(predatorCell, targetCell))
-            {
-                // 吃动画只作为表现，不阻塞玩家操作
-                StartCoroutine(EatTarget());
-            }
+                StartCoroutine(EatTarget(activeTarget));
         }
 
-        /// <summary>指定角色是否正被本捕食者吃（动画播放中）。</summary>
-        public bool IsEatingTarget(CharacterUnit character) => resolving && target == character;
+        /// <summary>指定角色是否正在被本捕食者吃掉。</summary>
+        public bool IsEatingTarget(CharacterUnit character) => resolving && resolvingTarget == character;
 
         public void ResetState()
         {
             resolving = false;
+            resolvingTarget = null;
             if (mover != null) mover.enabled = true;
             PlayIdle();
         }
@@ -106,54 +129,55 @@ namespace GameJamRAC.Gameplay
         {
             if (deadPredator != predator) return;
 
-            // D 的生命归零后只保留死亡画面；停止该回合的追击和后续自动移动。
             resolving = false;
+            resolvingTarget = null;
             if (mover != null)
             {
                 mover.StopAllCoroutines();
                 mover.enabled = false;
             }
+
             if (animator != null) animator.Play(deadStateName, 0, 0f);
         }
 
-        private IEnumerator EatTarget()
+        private IEnumerator EatTarget(CharacterUnit activeTarget)
         {
-            if (resolving || !CanEatTarget())
+            if (resolving || !CanEatTarget(activeTarget))
             {
                 PlayIdle();
                 yield break;
             }
 
             resolving = true;
+            resolvingTarget = activeTarget;
 
-            // 吃动画期间禁止目标移动
-            GridUnitMover targetMover = target != null ? target.GetComponent<GridUnitMover>() : null;
+            GridUnitMover targetMover = activeTarget != null ? activeTarget.GetComponent<GridUnitMover>() : null;
             if (targetMover != null) targetMover.enabled = false;
 
             HorizontalMoveFlip predatorFlip = predator != null ? predator.GetComponent<HorizontalMoveFlip>() : null;
-            if (predatorFlip != null && target != null)
-                yield return predatorFlip.FaceWorldPositionTemporarily(target.transform.position);
+            if (predatorFlip != null && activeTarget != null)
+                yield return predatorFlip.FaceWorldPositionTemporarily(activeTarget.transform.position);
 
             if (animator != null) animator.Play(eatStateName, 0, 0f);
             yield return new WaitForSeconds(eatDuration);
 
-            // 多个 D 同步回合时，动画期间目标可能已被另一只 D 处理；结算前再次确认。
-            if (!CanEatTarget())
+            if (!CanEatTarget(activeTarget))
             {
                 PlayIdle();
                 if (predatorFlip != null)
                     yield return predatorFlip.RestoreTemporaryFacing();
                 resolving = false;
+                resolvingTarget = null;
                 yield break;
             }
 
-            // 捕食主控角色时，不能抑制它的全局复活流程。
-            target.GiveRemainingLifeTo(predator, false);
-            target.SetPresentationVisible(false);
+            activeTarget.GiveRemainingLifeTo(predator, false);
+            activeTarget.SetPresentationVisible(false);
             PlayIdle();
             if (predatorFlip != null)
                 yield return predatorFlip.RestoreTemporaryFacing();
             resolving = false;
+            resolvingTarget = null;
         }
 
         private void PlayIdle()
@@ -161,56 +185,184 @@ namespace GameJamRAC.Gameplay
             if (animator != null) animator.Play(idleStateName, 0, 0f);
         }
 
-        private bool CanEatTarget()
+        private void MigrateLegacyTarget()
         {
-            // 捕食判定只看视觉死亡；B 进入激活格后即使生命尚在，也不可再被捕食。
-            if (target == null || target.IsVisuallyDead)
+            if (target == null || (targets != null && targets.Length > 0)) return;
+
+            targets = new[] { target };
+            target = null;
+        }
+
+        private bool CanEatTarget(CharacterUnit activeTarget)
+        {
+            return TryGetTargetCellInTerritory(activeTarget, out _);
+        }
+
+        private bool TryGetTargetCellInTerritory(out CharacterUnit activeTarget, out Vector3Int targetCell)
+        {
+            activeTarget = null;
+            targetCell = default;
+
+            if (targets != null)
+            {
+                foreach (CharacterUnit candidate in targets)
+                {
+                    if (!TryGetTargetCellInTerritory(candidate, out targetCell)) continue;
+                    activeTarget = candidate;
+                    return true;
+                }
+            }
+
+            if (TryGetTargetCellInTerritory(target, out targetCell))
+            {
+                activeTarget = target;
+                return true;
+            }
+
+            return false;
+        }
+
+        private bool TryGetTargetCellInTerritory(CharacterUnit activeTarget, out Vector3Int targetCell)
+        {
+            targetCell = default;
+            if (activeTarget == null || activeTarget.IsVisuallyDead)
                 return false;
 
             SceneThreeBConsumeSequence sceneThreeB = FindFirstObjectByType<SceneThreeBConsumeSequence>();
-            return sceneThreeB == null || !sceneThreeB.IsUnavailableAsPrey(target);
+            if (sceneThreeB != null && sceneThreeB.IsUnavailableAsPrey(activeTarget))
+                return false;
+
+            if (mover == null || mover.Board == null)
+                return false;
+
+            targetCell = mover.Board.WorldToCell(activeTarget.transform.position);
+            if (!requireTargetOnOwnBoard)
+                return true;
+
+            if (mover.Board.CanEnter(targetCell))
+                return true;
+
+            return includeInteractionTilesInTerritory && mover.Board.HasInteraction(targetCell);
+        }
+
+        private bool TryFindNextMove(Vector3Int start, Vector3Int targetCell, out MoveOption option)
+        {
+            option = default;
+            GridBoard board = mover != null ? mover.Board : null;
+            if (board == null || !board.CanEnter(start)) return false;
+
+            HashSet<Vector3Int> goals = BuildGoalCells(targetCell);
+            if (goals.Count == 0) return false;
+
+            Queue<Vector3Int> frontier = new Queue<Vector3Int>();
+            Dictionary<Vector3Int, Vector3Int> cameFrom = new Dictionary<Vector3Int, Vector3Int>();
+            HashSet<Vector3Int> visited = new HashSet<Vector3Int>();
+
+            frontier.Enqueue(start);
+            visited.Add(start);
+            Dictionary<Vector3Int, int> distanceFromStart = new Dictionary<Vector3Int, int>
+            {
+                [start] = 0
+            };
+
+            while (frontier.Count > 0)
+            {
+                Vector3Int current = frontier.Dequeue();
+                if (current != start && goals.Contains(current))
+                    return TryBuildFirstStep(start, current, cameFrom, out option);
+
+                int currentDistance = distanceFromStart[current];
+                if (maxSearchSteps > 0 && currentDistance >= maxSearchSteps)
+                    continue;
+
+                foreach (Vector3Int direction in GetOrderedSearchDirections(current, targetCell))
+                {
+                    Vector3Int next = current + direction;
+                    next.z = 0;
+                    if (visited.Contains(next) || !IsSearchableCell(next)) continue;
+
+                    visited.Add(next);
+                    cameFrom[next] = current;
+                    distanceFromStart[next] = currentDistance + 1;
+                    frontier.Enqueue(next);
+                }
+            }
+
+            return false;
+        }
+
+        private HashSet<Vector3Int> BuildGoalCells(Vector3Int targetCell)
+        {
+            HashSet<Vector3Int> goals = new HashSet<Vector3Int>();
+            GridBoard board = mover.Board;
+
+            if (board.CanEnter(targetCell))
+                goals.Add(targetCell);
+
+            foreach (Vector3Int direction in CardinalDirections)
+            {
+                Vector3Int adjacent = targetCell + direction;
+                adjacent.z = 0;
+                if (board.CanEnter(adjacent))
+                    goals.Add(adjacent);
+            }
+
+            return goals;
+        }
+
+        private bool TryBuildFirstStep(Vector3Int start, Vector3Int goal, Dictionary<Vector3Int, Vector3Int> cameFrom, out MoveOption option)
+        {
+            Vector3Int step = goal;
+            while (cameFrom.TryGetValue(step, out Vector3Int previous) && previous != start)
+                step = previous;
+
+            Vector3Int delta = step - start;
+            int lifeCost = Mathf.Abs(delta.x) + Mathf.Abs(delta.y) == 2 ? 2 : 1;
+            option = new MoveOption(step, lifeCost);
+            return step != start;
+        }
+
+        private IEnumerable<Vector3Int> GetOrderedSearchDirections(Vector3Int from, Vector3Int targetCell)
+        {
+            bool[] used = new bool[SearchDirections.Length];
+            for (int i = 0; i < SearchDirections.Length; i++)
+            {
+                int bestIndex = -1;
+                int bestDistance = int.MaxValue;
+
+                for (int j = 0; j < SearchDirections.Length; j++)
+                {
+                    if (used[j]) continue;
+
+                    Vector3Int next = from + SearchDirections[j];
+                    int distance = Mathf.Abs(targetCell.x - next.x) + Mathf.Abs(targetCell.y - next.y);
+                    if (distance >= bestDistance) continue;
+
+                    bestDistance = distance;
+                    bestIndex = j;
+                }
+
+                if (bestIndex < 0) yield break;
+
+                used[bestIndex] = true;
+                yield return SearchDirections[bestIndex];
+            }
+        }
+
+        private bool IsSearchableCell(Vector3Int cell)
+        {
+            GridBoard board = mover.Board;
+            if (!board.CanEnter(cell)) return false;
+
+            if (board.WalkableTilemap != null && board.WalkableTilemap.cellBounds.Contains(cell))
+                return true;
+
+            return board.IsTemporaryWalkableCell(cell);
         }
 
         private static bool IsCardinalAdjacent(Vector3Int from, Vector3Int to)
         {
             return Mathf.Abs(from.x - to.x) + Mathf.Abs(from.y - to.y) == 1;
-        }
-
-        private static IEnumerable<MoveOption> GetMoveOptions(Vector3Int from, Vector3Int to)
-        {
-            int dx = to.x - from.x;
-            int dy = to.y - from.y;
-            int absX = Mathf.Abs(dx);
-            int absY = Mathf.Abs(dy);
-            int stepX = dx == 0 ? 0 : (dx > 0 ? 1 : -1);
-            int stepY = dy == 0 ? 0 : (dy > 0 ? 1 : -1);
-
-            // 原始追击优先级：非相邻的斜向目标优先走斜向，直线目标优先直走。
-            if (dx != 0 && dy != 0 && !(absX == 1 && absY == 1))
-            {
-                yield return new MoveOption(from + new Vector3Int(stepX, stepY, 0), 2);
-
-                // 斜角格被堵时，改从两个相邻的正交格择一绕行。
-                yield return new MoveOption(from + new Vector3Int(stepX, 0, 0), 1);
-                yield return new MoveOption(from + new Vector3Int(0, stepY, 0), 1);
-                yield break;
-            }
-
-            if (absX >= absY && dx != 0)
-            {
-                yield return new MoveOption(from + new Vector3Int(stepX, 0, 0), 1);
-                // 直线被堵时，先向两侧横移一格，再由下一回合重新朝目标前进。
-                yield return new MoveOption(from + new Vector3Int(0, 1, 0), 1);
-                yield return new MoveOption(from + new Vector3Int(0, -1, 0), 1);
-                yield break;
-            }
-
-            if (dy != 0)
-            {
-                yield return new MoveOption(from + new Vector3Int(0, stepY, 0), 1);
-                yield return new MoveOption(from + new Vector3Int(1, 0, 0), 1);
-                yield return new MoveOption(from + new Vector3Int(-1, 0, 0), 1);
-            }
         }
 
         private readonly struct MoveOption

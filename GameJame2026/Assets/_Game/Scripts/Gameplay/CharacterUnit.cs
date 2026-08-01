@@ -78,8 +78,8 @@ namespace GameJamRAC.Gameplay
             rb.isKinematic = true;
 
             gridMover = GetComponent<GridUnitMover>();
-            gridMover.onEnteredCell += CheckForExit;
             gridMover.onEnteredCell += SpendLife;
+            gridMover.onEnteredCell += CheckForExit;
             gridMover.onPathLengthChanged += UpdateWalkedPathLength;
 
             CameraAnchor anchor = ViewAnchor;
@@ -149,7 +149,7 @@ namespace GameJamRAC.Gameplay
 
         private void CheckForExit(int _)
         {
-            if (!isPlayerControlled) return;
+            if (!isPlayerControlled || isDead || currentLife < 1) return;
 
             ExitGoal exitGoal = FindFirstObjectByType<ExitGoal>();
             if (exitGoal == null || !exitGoal.ContainsWorldPosition(transform.position)) return;

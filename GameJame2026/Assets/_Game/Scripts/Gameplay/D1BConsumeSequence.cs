@@ -169,6 +169,7 @@ namespace GameJamRAC.Gameplay
             if (moverA != null) moverA.enabled = true;
             if (moverB != null) moverB.enabled = true;
             if (revealCharacterB) characterB?.SetPresentationVisible(true);
+            else characterB?.SetPresentationVisible(false);
             characterB?.SetVisualDeath(false);
             bVisualState?.SetIdle();
             aVisualState?.RefreshLifeState();

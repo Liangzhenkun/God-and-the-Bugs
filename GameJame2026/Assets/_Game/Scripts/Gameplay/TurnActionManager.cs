@@ -1,17 +1,21 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
-using System;
 using GameJamRAC.Grid;
 using UnityEngine;
 
 namespace GameJamRAC.Gameplay
 {
-    /// <summary>Runs one autonomous turn after each completed player movement.</summary>
+    /// <summary>玩家每完成一次格子移动，只推进一次捕食者回合。</summary>
     [DisallowMultipleComponent]
     public class TurnActionManager : MonoBehaviour
     {
         [SerializeField, Min(0f)] private float playerToAiDelay = 0.08f;
+
+        private static TurnActionManager activeInstance;
+
         private readonly Dictionary<GridUnitMover, Action<Vector3Int>> subscribedMovers = new Dictionary<GridUnitMover, Action<Vector3Int>>();
+        private readonly Dictionary<GridUnitMover, int> processedMoveCounts = new Dictionary<GridUnitMover, int>();
         private Coroutine turnCoroutine;
         private bool autonomousTurnActive;
 
@@ -20,47 +24,75 @@ namespace GameJamRAC.Gameplay
         private void OnEnable()
         {
             if (!Application.isPlaying) return;
-            foreach (CharacterUnit unit in FindObjectsByType<CharacterUnit>(FindObjectsSortMode.None))
+
+            if (activeInstance != null && activeInstance != this)
             {
-                GridUnitMover mover = unit.GetComponent<GridUnitMover>();
-                if (mover == null) continue;
-                Action<Vector3Int> handler = cell => OnUnitCellReached(unit);
-                mover.onCellReached += handler;
-                subscribedMovers[mover] = handler;
+                enabled = false;
+                return;
             }
+
+            activeInstance = this;
+            SubscribeMovers();
         }
 
         private void OnDisable()
         {
             if (!Application.isPlaying) return;
-            foreach (KeyValuePair<GridUnitMover, Action<Vector3Int>> subscription in subscribedMovers)
-                if (subscription.Key != null)
-                    subscription.Key.onCellReached -= subscription.Value;
-            subscribedMovers.Clear();
+
+            UnsubscribeMovers();
+            if (activeInstance == this)
+                activeInstance = null;
+
             if (turnCoroutine != null) StopCoroutine(turnCoroutine);
             turnCoroutine = null;
             autonomousTurnActive = false;
         }
 
-        private void OnUnitCellReached(CharacterUnit unit)
+        private void SubscribeMovers()
         {
-            if (unit == null || !unit.IsPlayerControlled || unit.IsDead || turnCoroutine != null) return;
-            turnCoroutine = StartCoroutine(RunAutonomousTurns(unit));
+            foreach (CharacterUnit unit in FindObjectsByType<CharacterUnit>(FindObjectsSortMode.None))
+            {
+                GridUnitMover mover = unit.GetComponent<GridUnitMover>();
+                if (mover == null || subscribedMovers.ContainsKey(mover)) continue;
+
+                Action<Vector3Int> handler = _ => OnUnitCellReached(unit, mover);
+                mover.onCellReached += handler;
+                subscribedMovers[mover] = handler;
+                processedMoveCounts[mover] = mover.CompletedMoveCount;
+            }
         }
 
-        private IEnumerator RunAutonomousTurns(CharacterUnit player)
+        private void UnsubscribeMovers()
         {
-            // 等待所有消耗序列完成后再开启 AI 回合
-            foreach (var mb in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
+            foreach (KeyValuePair<GridUnitMover, Action<Vector3Int>> subscription in subscribedMovers)
             {
-                if (mb is IConsumeSequence cs && cs.IsResolving)
-                    yield return new WaitWhile(() => cs.IsResolving);
+                if (subscription.Key != null)
+                    subscription.Key.onCellReached -= subscription.Value;
             }
 
-            GridUnitMover playerMover = player.GetComponent<GridUnitMover>();
-            if (playerMover != null) playerMover.enabled = false;
+            subscribedMovers.Clear();
+            processedMoveCounts.Clear();
+        }
 
-            // 只保留玩家和 AI 回合交接时的短暂停顿；所有 AI 同时起步。
+        private void OnUnitCellReached(CharacterUnit unit, GridUnitMover mover)
+        {
+            if (unit == null || mover == null || !unit.IsPlayerControlled || unit.IsDead) return;
+            if (turnCoroutine != null) return;
+
+            int moveCount = mover.CompletedMoveCount;
+            if (processedMoveCounts.TryGetValue(mover, out int processedCount) && processedCount == moveCount) return;
+
+            processedMoveCounts[mover] = moveCount;
+            turnCoroutine = StartCoroutine(RunAutonomousTurns(unit, mover));
+        }
+
+        private IEnumerator RunAutonomousTurns(CharacterUnit player, GridUnitMover playerMover)
+        {
+            yield return null;
+
+            if (playerMover != null)
+                playerMover.enabled = false;
+
             if (playerToAiDelay > 0f)
                 yield return new WaitForSeconds(playerToAiDelay);
 
@@ -68,24 +100,51 @@ namespace GameJamRAC.Gameplay
             autonomousTurnActive = true;
             foreach (PredatorAI predator in FindObjectsByType<PredatorAI>(FindObjectsSortMode.None))
             {
-                if (predator != null && predator.isActiveAndEnabled)
-                {
-                    activePredatorTurns++;
-                    StartCoroutine(RunPredatorTurn(predator, () => activePredatorTurns--));
-                }
+                if (predator == null || !predator.isActiveAndEnabled) continue;
+
+                activePredatorTurns++;
+                StartCoroutine(RunPredatorTurn(predator, () => activePredatorTurns--));
             }
 
             yield return new WaitWhile(() => activePredatorTurns > 0);
             autonomousTurnActive = false;
 
-            // 玩家正被吃时不恢复 Mover，等吃动画播完再恢复
+            yield return WaitForConsumeSequencesToFinish();
+
             bool playerBeingEaten = false;
             foreach (PredatorAI predator in FindObjectsByType<PredatorAI>(FindObjectsSortMode.None))
-                if (predator.IsEatingTarget(player)) { playerBeingEaten = true; break; }
+            {
+                if (!predator.IsEatingTarget(player)) continue;
+
+                playerBeingEaten = true;
+                break;
+            }
 
             if (playerMover != null && !player.IsDead && !playerBeingEaten)
                 playerMover.enabled = true;
+
             turnCoroutine = null;
+        }
+
+        private static IEnumerator WaitForConsumeSequencesToFinish()
+        {
+            while (true)
+            {
+                bool isResolving = false;
+                foreach (MonoBehaviour mb in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
+                {
+                    IConsumeSequence sequence = mb as IConsumeSequence;
+                    if (sequence == null || !sequence.IsResolving) continue;
+
+                    isResolving = true;
+                    break;
+                }
+
+                if (!isResolving)
+                    yield break;
+
+                yield return null;
+            }
         }
 
         private IEnumerator RunPredatorTurn(PredatorAI predator, Action onFinished)

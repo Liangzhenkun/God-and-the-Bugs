@@ -1,9 +1,11 @@
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 
 namespace GameJamRAC.Grid
 {
-    /// <summary>One-way portal: any entrance tile sends the unit to this layer's exit tile.</summary>
+    /// <summary>单向黑洞：入口 Tile 会把绑定的角色送到出口 Tile。</summary>
     [DisallowMultipleComponent]
     [RequireComponent(typeof(Tilemap))]
     public class BlackholePortal : MonoBehaviour
@@ -13,10 +15,14 @@ namespace GameJamRAC.Grid
         [SerializeField] private GridUnitMover mover;
         [SerializeField] private Tilemap portalTilemap;
 
+        [Header("额外触发者")]
+        [SerializeField] private GridUnitMover[] additionalMovers;
+
         [Header("瓦片")]
         [SerializeField] private TileBase entranceTile;
         [SerializeField] private TileBase exitTile;
 
+        private readonly Dictionary<GridUnitMover, Action<Vector3Int>> moverHandlers = new Dictionary<GridUnitMover, Action<Vector3Int>>();
         private Vector3Int exitCell;
         private bool hasExit;
         private bool teleporting;
@@ -30,12 +36,12 @@ namespace GameJamRAC.Grid
         private void OnEnable()
         {
             ResolveReferences();
-            if (mover != null) mover.onCellReached += OnCellReached;
+            RefreshSubscriptions();
         }
 
         private void OnDisable()
         {
-            if (mover != null) mover.onCellReached -= OnCellReached;
+            ClearSubscriptions();
         }
 
         [ContextMenu("刷新出口格")]
@@ -54,25 +60,63 @@ namespace GameJamRAC.Grid
             }
         }
 
-        private void OnCellReached(Vector3Int cell)
+        private void RefreshSubscriptions()
         {
-            if (teleporting || portalTilemap == null || entranceTile == null || mover == null) return;
-            cell.z = 0;
-            if (portalTilemap.GetTile(cell) != entranceTile) return;
+            ClearSubscriptions();
+            Subscribe(mover);
+
+            if (additionalMovers == null) return;
+            foreach (GridUnitMover additionalMover in additionalMovers)
+                Subscribe(additionalMover);
+        }
+
+        private void Subscribe(GridUnitMover targetMover)
+        {
+            if (targetMover == null || moverHandlers.ContainsKey(targetMover)) return;
+
+            Action<Vector3Int> handler = _ => OnMoverCellReached(targetMover);
+            moverHandlers.Add(targetMover, handler);
+            targetMover.onCellReached += handler;
+        }
+
+        private void ClearSubscriptions()
+        {
+            foreach (KeyValuePair<GridUnitMover, Action<Vector3Int>> pair in moverHandlers)
+                pair.Key.onCellReached -= pair.Value;
+
+            moverHandlers.Clear();
+        }
+
+        private void OnMoverCellReached(GridUnitMover activeMover)
+        {
+            if (teleporting || activeMover == null || portalTilemap == null || entranceTile == null) return;
+
+            GridBoard activeBoard = activeMover.Board;
+            if (activeBoard == null) return;
+
+            Vector3Int portalCell = board != null
+                ? board.WorldToCell(activeMover.transform.position)
+                : activeBoard.WorldToCell(activeMover.transform.position);
+            portalCell.z = 0;
+            if (portalTilemap.GetTile(portalCell) != entranceTile) return;
 
             RefreshExitCell();
             if (!hasExit) return;
 
+            Vector3 exitWorldPosition = board != null
+                ? board.GetCellCenterWorld(exitCell)
+                : portalTilemap.GetCellCenterWorld(exitCell);
+            Vector3Int activeExitCell = activeBoard.WorldToCell(exitWorldPosition);
+
             teleporting = true;
-            mover.TeleportToCell(exitCell);
+            activeMover.TeleportToCell(activeExitCell);
             teleporting = false;
         }
 
         private void ResolveReferences()
         {
             if (portalTilemap == null) portalTilemap = GetComponent<Tilemap>();
-            // 传送层跟随其父 RouteGrid。复制 BlackHole_A 后只要改挂到另一个角色的
-            // RouteGrid 下，就会自动重新绑定那个角色，避免保留旧角色 A 的引用。
+
             GridBoard parentBoard = GetComponentInParent<GridBoard>();
             if (parentBoard != null) board = parentBoard;
 

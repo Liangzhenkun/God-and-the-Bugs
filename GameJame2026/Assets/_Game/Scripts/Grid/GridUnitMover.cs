@@ -29,6 +29,7 @@ namespace GameJamRAC.Grid
         private MovementRangeVisualizer rangeVisualizer;
         private Vector3 lastEditorPosition;
         private bool isSnappingInEditor;
+        private int completedMoveCount;
 
         public event Action<int> onEnteredCell;
         public event Action<Vector3Int> onMoveStarted;
@@ -39,6 +40,7 @@ namespace GameJamRAC.Grid
         public Vector3Int CurrentCell => currentCell;
         public bool IsMoving => isMoving;
         public float TotalPathLength => totalPathLength;
+        public int CompletedMoveCount => completedMoveCount;
 
         private void Awake()
         {
@@ -175,6 +177,7 @@ namespace GameJamRAC.Grid
             transform.position = destination;
             currentCell = targetCell;
             isMoving = false;
+            completedMoveCount++;
             totalPathLength += pathDistance;
             RefreshMoveTargets();
             board.NotifyCellEntered(targetCell);

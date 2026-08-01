@@ -4,7 +4,7 @@ using UnityEngine;
 
 namespace GameJamRAC.Gameplay
 {
-    /// <summary>Scene 3: B dies on its tile; A eats B when it reaches that tile.</summary>
+    /// <summary>第二关：B 进入交互格后视觉死亡，A 需要在交互格旁边吃掉 B。</summary>
     [DisallowMultipleComponent]
     public class SceneThreeBConsumeSequence : MonoBehaviour, IConsumeSequence
     {
@@ -29,13 +29,16 @@ namespace GameJamRAC.Gameplay
         public bool IsBUnavailable => bAwaitingConsumption || resolving
             || (characterB != null && (characterB.IsDead || characterB.IsVisuallyDead));
 
-        /// <summary>B 在激活格进入视觉死亡后，不再是捕食者可结算的目标。</summary>
+        /// <summary>B 视觉死亡后，不再作为捕食者可结算的猎物。</summary>
         public bool IsUnavailableAsPrey(CharacterUnit candidate)
         {
             return candidate != null && candidate == characterB && characterB.IsVisuallyDead;
         }
 
-        private void Awake() { ResolveReferences(); }
+        private void Awake()
+        {
+            ResolveReferences();
+        }
 
         private void OnEnable()
         {
@@ -64,18 +67,35 @@ namespace GameJamRAC.Gameplay
                 moverB.enabled = false;
             }
 
-            // 关卡 3 不生成临时桥格：B 所在格不会开放给 A，也不会扩展 A 的能力范围。
+            TryStartConsumptionIfAIsOnBInteraction();
         }
 
-        private void OnACellReached(Vector3Int cell)
+        private void OnACellReached(Vector3Int _)
         {
-            if (!bAwaitingConsumption || resolving || boardA == null || boardB == null) return;
+            TryStartConsumptionIfAIsOnBInteraction();
+        }
 
-            // A 只要正常走进 B 的任意交互区域便触发吃掉；不要求进入 B 的死亡格。
-            Vector3 worldPosition = boardA.Grid.GetCellCenterWorld(cell);
-            Vector3Int cellOnBBoard = boardB.WorldToCell(worldPosition);
+        private void TryStartConsumptionIfAIsOnBInteraction()
+        {
+            if (!bAwaitingConsumption || resolving || boardB == null || characterA == null || characterB == null || moverB == null)
+                return;
+
+            Vector3Int cellOnBBoard = boardB.WorldToCell(characterA.transform.position);
             if (!boardB.HasInteraction(cellOnBBoard)) return;
+            if (!IsBVisuallyDeadNextTo(cellOnBBoard)) return;
+
             consumeCoroutine = StartCoroutine(ConsumeB());
+        }
+
+        private bool IsBVisuallyDeadNextTo(Vector3Int centerCell)
+        {
+            if (!characterB.IsVisuallyDead) return false;
+
+            Vector3Int bCell = moverB.CurrentCell;
+            return bCell == centerCell + Vector3Int.right
+                || bCell == centerCell + Vector3Int.left
+                || bCell == centerCell + Vector3Int.up
+                || bCell == centerCell + Vector3Int.down;
         }
 
         private IEnumerator ConsumeB()
@@ -83,6 +103,7 @@ namespace GameJamRAC.Gameplay
             resolving = true;
             bConsumed = true;
             if (moverA != null) moverA.enabled = false;
+
             HorizontalMoveFlip aFlip = characterA != null ? characterA.GetComponent<HorizontalMoveFlip>() : null;
             if (aFlip != null && characterB != null)
                 yield return aFlip.FaceWorldPositionTemporarily(characterB.transform.position);
@@ -112,7 +133,6 @@ namespace GameJamRAC.Gameplay
             consumeCoroutine = null;
             resolving = false;
             bAwaitingConsumption = false;
-            bConsumed = false;
             if (moverA != null) moverA.enabled = true;
             if (moverB != null) moverB.enabled = true;
             if (revealCharacterB)
