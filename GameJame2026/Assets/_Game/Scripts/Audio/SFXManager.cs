@@ -6,7 +6,7 @@ using UnityEngine.SceneManagement;
 namespace GameJamRAC.Audio
 {
     /// <summary>
-    /// 移动音效：自动接 GridUnitMover.onCellReached，切场景自动重连。
+    /// 移动音效：自动接 GridUnitMover 的移动事件，切场景自动重连。
     /// </summary>
     public class SFXManager : MonoBehaviour
     {
@@ -14,9 +14,12 @@ namespace GameJamRAC.Audio
         [SerializeField, Range(0f, 1f)] private float volume = 1f;
         [SerializeField] private float segmentStart = 0f;
         [SerializeField] private float segmentDuration = 0.4f;
+        [SerializeField, Min(0f)] private float playDelay = 0.02f;
+        [SerializeField] private bool playWhenMoveStarts = true;
 
         private AudioSource audioSrc;
         private Coroutine stopRoutine;
+        private Coroutine delayRoutine;
 
         private void Awake()
         {
@@ -36,12 +39,20 @@ namespace GameJamRAC.Audio
         {
             foreach (GridUnitMover mover in FindObjectsByType<GridUnitMover>(FindObjectsSortMode.None))
             {
+                mover.onMoveStarted -= OnMove;
                 mover.onCellReached -= OnMove;
-                mover.onCellReached += OnMove;
+                if (playWhenMoveStarts)
+                    mover.onMoveStarted += OnMove;
+                else
+                    mover.onCellReached += OnMove;
             }
         }
 
-        private void OnMove(Vector3Int _) => Play();
+        private void OnMove(Vector3Int _)
+        {
+            if (delayRoutine != null) StopCoroutine(delayRoutine);
+            delayRoutine = StartCoroutine(PlayAfterDelay());
+        }
 
         public void Play()
         {
@@ -53,6 +64,15 @@ namespace GameJamRAC.Audio
             audioSrc.Play();
             audioSrc.time = Mathf.Clamp(segmentStart, 0f, sourceClip.length - 0.01f);
             stopRoutine = StartCoroutine(StopAfter(Mathf.Min(segmentDuration, sourceClip.length - segmentStart)));
+        }
+
+        private IEnumerator PlayAfterDelay()
+        {
+            if (playDelay > 0f)
+                yield return new WaitForSeconds(playDelay);
+
+            Play();
+            delayRoutine = null;
         }
 
         private IEnumerator StopAfter(float delay)

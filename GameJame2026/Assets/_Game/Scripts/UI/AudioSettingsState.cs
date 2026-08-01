@@ -30,7 +30,7 @@ namespace GameJamRAC.UI
 
         public static void Apply()
         {
-            AudioListener.volume = SoundEnabled ? Volume : 0f;
+            AudioListener.volume = 1f;
             OnSettingsChanged?.Invoke();
         }
     }

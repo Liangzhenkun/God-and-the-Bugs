@@ -30,7 +30,16 @@ namespace GameJamRAC.UI
             RefreshIcon();
         }
 
-        private void OnEnable() => RefreshIcon();
+        private void OnEnable()
+        {
+            AudioSettingsState.OnSettingsChanged += RefreshIcon;
+            RefreshIcon();
+        }
+
+        private void OnDisable()
+        {
+            AudioSettingsState.OnSettingsChanged -= RefreshIcon;
+        }
 
         private void OnDestroy()
         {

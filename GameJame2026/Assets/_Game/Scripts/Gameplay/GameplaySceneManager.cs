@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using GameJamRAC.Audio;
 using GameJamRAC.UI;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -35,8 +36,10 @@ namespace GameJamRAC.Gameplay
         [SerializeField] private GameObject certificatePanel;
         [SerializeField] private Button certificateCloseButton;
         [SerializeField] private Button certificateAcceptButton;
+        [SerializeField, Min(0f)] private float quitDelaySeconds = 0.35f;
 
         private bool hasWon;
+        private bool isQuitting;
 
         public bool HasWon => hasWon;
         private bool IsFinalScene
@@ -300,8 +303,23 @@ namespace GameJamRAC.Gameplay
                 Debug.LogError("Scene is missing or not included in Build Settings: " + sceneName);
         }
 
-        private static void ExitGame()
+        private void ExitGame()
         {
+            if (isQuitting) return;
+            PlayQuitFeedback();
+            StartCoroutine(ExitAfterFeedback());
+        }
+
+        private static void PlayQuitFeedback()
+        {
+            SFXPlayer player = FindFirstObjectByType<SFXPlayer>();
+            if (player != null) player.Play();
+        }
+
+        private IEnumerator ExitAfterFeedback()
+        {
+            isQuitting = true;
+            yield return new WaitForSecondsRealtime(quitDelaySeconds);
 #if UNITY_EDITOR
             UnityEditor.EditorApplication.isPlaying = false;
 #else

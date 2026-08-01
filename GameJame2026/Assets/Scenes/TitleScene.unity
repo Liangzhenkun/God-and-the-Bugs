@@ -1239,6 +1239,8 @@ GameObject:
   - component: {fileID: 1938007303}
   - component: {fileID: 1938007305}
   - component: {fileID: 1938007304}
+  - component: {fileID: 1938007306}
+  - component: {fileID: 1938007307}
   m_Layer: 0
   m_Name: BackgroundMusic
   m_TagString: Untagged
@@ -1287,8 +1289,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8169cbb471b76c84a9a3e1c7f39355ea, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  playerId: UI
   sourceClip: {fileID: 8300000, guid: 9e5c650f1c862534fbfdbf90ab3c0d5f, type: 3}
-  volume: 1
+  volume: 0.439
   segmentStart: 0
   segmentDuration: 1.5
 --- !u!114 &1938007305
@@ -1307,6 +1310,39 @@ MonoBehaviour:
   volume: 1
   segmentStart: 0
   segmentDuration: 0.8
+  playDelay: 0.02
+  playWhenMoveStarts: 1
+--- !u!114 &1938007306
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1938007301}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3b3fb6d2d27f41e4da9e1f2d163af479, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  clickPlayer: {fileID: 1938007304}
+  includeInactiveButtons: 1
+--- !u!114 &1938007307
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1938007301}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8169cbb471b76c84a9a3e1c7f39355ea, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playerId: SoulSwap
+  sourceClip: {fileID: 8300000, guid: 9e5c650f1c862534fbfdbf90ab3c0d5f, type: 3}
+  volume: 0.652
+  segmentStart: 13
+  segmentDuration: 1.5
 --- !u!1 &2035495923
 GameObject:
   m_ObjectHideFlags: 0
@@ -1548,6 +1584,7 @@ MonoBehaviour:
   settingsOverlay: {fileID: 0}
   gameplayOverlay: {fileID: 0}
   gameplaySceneName: MainScene
+  quitDelaySeconds: 0.35
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

@@ -1,3 +1,5 @@
+using System.Collections;
+using GameJamRAC.Audio;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
@@ -41,6 +43,9 @@ namespace GameJamRAC.UI
 
         [Header("流程配置")]
         [SerializeField] private string gameplaySceneName = "";
+        [SerializeField, Min(0f)] private float quitDelaySeconds = 0.35f;
+
+        private bool isQuitting;
 
         private void OnEnable()
         {
@@ -133,6 +138,21 @@ namespace GameJamRAC.UI
 
         public void ExitGame()
         {
+            if (isQuitting) return;
+            PlayQuitFeedback();
+            StartCoroutine(ExitAfterFeedback());
+        }
+
+        private static void PlayQuitFeedback()
+        {
+            SFXPlayer player = FindFirstObjectByType<SFXPlayer>();
+            if (player != null) player.Play();
+        }
+
+        private IEnumerator ExitAfterFeedback()
+        {
+            isQuitting = true;
+            yield return new WaitForSecondsRealtime(quitDelaySeconds);
 #if UNITY_EDITOR
             // 编辑器内：退出 Play 模式
             UnityEditor.EditorApplication.isPlaying = false;

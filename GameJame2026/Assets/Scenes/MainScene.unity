@@ -1047,6 +1047,7 @@ MonoBehaviour:
   certificatePanel: {fileID: 0}
   certificateCloseButton: {fileID: 0}
   certificateAcceptButton: {fileID: 0}
+  quitDelaySeconds: 0.35
 --- !u!114 &143499214
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5853,6 +5854,7 @@ GameObject:
   - component: {fileID: 1038729790}
   - component: {fileID: 1038729789}
   - component: {fileID: 1038729791}
+  - component: {fileID: 1038729792}
   m_Layer: 0
   m_Name: SwapButton
   m_TagString: Untagged
@@ -5962,6 +5964,21 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!114 &1038729792
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1038729787}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ecb53d8bfa9048d1aaaf6da812f62275, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  clickPlayer: {fileID: 0}
+  clickPlayerId: SoulSwap
+  usesDefaultClickPlayer: 0
 --- !u!1 &1072711212
 GameObject:
   m_ObjectHideFlags: 0
@@ -8337,8 +8354,8 @@ MonoBehaviour:
   speed: 1.8
   minAlpha: 0.25
   maxAlpha: 1
-  startDelay: 0.2
-  duration: 2.5
+  startDelay: 0.1
+  duration: 3
 --- !u!1 &1530435631
 GameObject:
   m_ObjectHideFlags: 0

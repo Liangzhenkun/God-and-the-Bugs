@@ -31,6 +31,7 @@ namespace GameJamRAC.Grid
         private bool isSnappingInEditor;
 
         public event Action<int> onEnteredCell;
+        public event Action<Vector3Int> onMoveStarted;
         public event Action<Vector3Int> onCellReached;
         public event Action<float> onMovedDistance;
         public event Action<float> onPathLengthChanged;
@@ -109,6 +110,7 @@ namespace GameJamRAC.Grid
             if ((!ignoreAbility && !CanMoveByAbility(offset)) || !board.CanEnter(targetCell)) return false;
             if (!HasContinuousRoad(currentCell, targetCell)) return false;
 
+            onMoveStarted?.Invoke(targetCell);
             StartCoroutine(MoveToCell(targetCell, GetGridDistance(offset), lifeCost));
             return true;
         }

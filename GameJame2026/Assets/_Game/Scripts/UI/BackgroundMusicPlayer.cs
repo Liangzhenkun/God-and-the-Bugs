@@ -36,13 +36,13 @@ namespace GameJamRAC.UI
             // 编辑器下始终同步 Inspector 初始音量，方便调试，但保留静音偏好
             // 打包后仅在首次运行时使用初始值，之后读取玩家偏好
 #if UNITY_EDITOR
-            AudioSettingsState.Set(initialVolume, AudioSettingsState.SoundEnabled);
+            AudioSettingsState.Set(initialVolume, true);
 #else
             if (!PlayerPrefs.HasKey("GameJamRAC.AudioVolume.v2"))
                 AudioSettingsState.Set(initialVolume, true);
 #endif
 
-            source.volume = 1f;
+            source.volume = AudioSettingsState.SoundEnabled ? AudioSettingsState.Volume : 0f;
             ApplySoundEnabled();
             AudioSettingsState.OnSettingsChanged += SyncVolume;
 
@@ -66,15 +66,17 @@ namespace GameJamRAC.UI
             if (source == null) return;
             if (AudioSettingsState.SoundEnabled)
             {
+                source.volume = AudioSettingsState.Volume;
                 source.UnPause();
                 if (!source.isPlaying && source.clip != null)
                     source.Play();
             }
             else
             {
+                source.volume = 0f;
                 source.Pause();
             }
-            AudioListener.volume = AudioSettingsState.SoundEnabled ? AudioSettingsState.Volume : 0f;
+            AudioListener.volume = 1f;
         }
 
         /// <summary>声音开关切换时暂停/恢复音乐，不触发 Apply（避免循环）。</summary>

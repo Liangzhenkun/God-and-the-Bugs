@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace GameJamRAC.Audio
@@ -8,6 +9,9 @@ namespace GameJamRAC.Audio
     /// </summary>
     public class SFXPlayer : MonoBehaviour
     {
+        private static readonly Dictionary<string, SFXPlayer> PlayersById = new Dictionary<string, SFXPlayer>();
+
+        [SerializeField] private string playerId = "";
         [SerializeField] private AudioClip sourceClip;
         [SerializeField, Range(0f, 1f)] private float volume = 1f;
         [SerializeField] private float segmentStart = 0f;
@@ -20,6 +24,27 @@ namespace GameJamRAC.Audio
         {
             audioSrc = gameObject.AddComponent<AudioSource>();
             audioSrc.playOnAwake = false;
+        }
+
+        private void OnEnable()
+        {
+            Register();
+        }
+
+        private void OnDisable()
+        {
+            Unregister();
+        }
+
+        public static bool TryGetById(string id, out SFXPlayer player)
+        {
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                player = null;
+                return false;
+            }
+
+            return PlayersById.TryGetValue(id.Trim(), out player) && player != null;
         }
 
         public void Play()
@@ -40,6 +65,21 @@ namespace GameJamRAC.Audio
             audioSrc.Stop();
             audioSrc.clip = null;
             stopRoutine = null;
+        }
+
+        private void Register()
+        {
+            if (string.IsNullOrWhiteSpace(playerId)) return;
+            PlayersById[playerId.Trim()] = this;
+        }
+
+        private void Unregister()
+        {
+            if (string.IsNullOrWhiteSpace(playerId)) return;
+
+            string key = playerId.Trim();
+            if (PlayersById.TryGetValue(key, out SFXPlayer player) && player == this)
+                PlayersById.Remove(key);
         }
     }
 }
