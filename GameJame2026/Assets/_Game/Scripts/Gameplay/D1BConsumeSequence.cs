@@ -134,6 +134,10 @@ namespace GameJamRAC.Gameplay
             resolving = true;
             bConsumed = true;
             if (moverA != null) moverA.enabled = false;
+            HorizontalMoveFlip aFlip = characterA != null ? characterA.GetComponent<HorizontalMoveFlip>() : null;
+            if (aFlip != null && characterB != null)
+                yield return aFlip.FaceWorldPositionTemporarily(characterB.transform.position);
+
             aVisualState?.PlayEatAnimation();
             yield return new WaitForSeconds(eatDuration);
 
@@ -141,6 +145,8 @@ namespace GameJamRAC.Gameplay
             characterB?.SetPresentationVisible(false);
             characterB?.SetVisualDeath(false);
             aVisualState?.FinishEatAnimation();
+            if (aFlip != null)
+                yield return aFlip.RestoreTemporaryFacing();
 
             bAwaitingConsumption = false;
             resolving = false;

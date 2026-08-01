@@ -133,13 +133,14 @@ namespace GameJamRAC.Gameplay
         public void EvaluateInitialAInteraction()
         {
             ResolveReferences();
-            if (bActivated || boardA == null || moverA == null) return;
-            if (boardA.HasInteraction(moverA.CurrentCell))
-                OnAInteraction(string.Empty);
+            TryActivateBFromCurrentAPosition();
         }
 
         private void OnBInteraction(string interactionId)
         {
+            if (!bActivated)
+                TryActivateBFromCurrentAPosition();
+
             if (!enableBridgeStep || !bActivated || bridgeActive || boardA == null || boardB == null || moverB == null || characterB == null)
                 return;
 
@@ -153,6 +154,16 @@ namespace GameJamRAC.Gameplay
             boardA.SetTemporaryWalkableCell(bridgeCellForA, true, bridgeHeight);
             moverA?.RefreshMoveTargets();
             SetGlow(true, bridgeGlowColor);
+        }
+
+        private bool TryActivateBFromCurrentAPosition()
+        {
+            if (bActivated) return true;
+            if (boardA == null || moverA == null) return false;
+            if (!boardA.HasInteraction(moverA.CurrentCell)) return false;
+
+            OnAInteraction(string.Empty);
+            return true;
         }
 
         private void OnACellReached(Vector3Int cell)
@@ -176,6 +187,10 @@ namespace GameJamRAC.Gameplay
         private IEnumerator AbsorbBridgeLifeAfterLeaving()
         {
             if (moverA != null) moverA.enabled = false;
+            HorizontalMoveFlip aFlip = characterA != null ? characterA.GetComponent<HorizontalMoveFlip>() : null;
+            if (aFlip != null && characterB != null)
+                yield return aFlip.FaceWorldPositionTemporarily(characterB.transform.position);
+
             aVisualState?.PlayEatAnimation();
             yield return new WaitForSeconds(absorbEatDuration);
 
@@ -188,6 +203,8 @@ namespace GameJamRAC.Gameplay
             bVisualState?.SetDead();
             SetBVisualVisible(false);
             aVisualState?.FinishEatAnimation();
+            if (aFlip != null)
+                yield return aFlip.RestoreTemporaryFacing();
 
             if (moverA != null)
             {

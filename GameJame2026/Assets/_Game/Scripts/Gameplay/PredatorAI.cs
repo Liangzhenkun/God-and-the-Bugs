@@ -130,6 +130,10 @@ namespace GameJamRAC.Gameplay
             GridUnitMover targetMover = target != null ? target.GetComponent<GridUnitMover>() : null;
             if (targetMover != null) targetMover.enabled = false;
 
+            HorizontalMoveFlip predatorFlip = predator != null ? predator.GetComponent<HorizontalMoveFlip>() : null;
+            if (predatorFlip != null && target != null)
+                yield return predatorFlip.FaceWorldPositionTemporarily(target.transform.position);
+
             if (animator != null) animator.Play(eatStateName, 0, 0f);
             yield return new WaitForSeconds(eatDuration);
 
@@ -137,6 +141,8 @@ namespace GameJamRAC.Gameplay
             if (!CanEatTarget())
             {
                 PlayIdle();
+                if (predatorFlip != null)
+                    yield return predatorFlip.RestoreTemporaryFacing();
                 resolving = false;
                 yield break;
             }
@@ -145,6 +151,8 @@ namespace GameJamRAC.Gameplay
             target.GiveRemainingLifeTo(predator, false);
             target.SetPresentationVisible(false);
             PlayIdle();
+            if (predatorFlip != null)
+                yield return predatorFlip.RestoreTemporaryFacing();
             resolving = false;
         }
 
