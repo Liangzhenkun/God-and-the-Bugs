@@ -200,6 +200,17 @@ namespace GameJamRAC.UI
             CreateButton(card.transform, "MainMenu", "\u56DE\u5230\u4E3B\u83DC\u5355", new Vector2(0.5f, 0.59f), Vector2.zero, new Vector2(280f, 58f), CloseAllOverlays);
             CreateButton(card.transform, "ExitGame", "\u9000\u51FA\u6E38\u620F", new Vector2(0.5f, 0.39f), Vector2.zero, new Vector2(280f, 58f), ExitGame);
             CreateButton(card.transform, "Credits", "\u5236\u4F5C\u7EC4", new Vector2(0.5f, 0.19f), Vector2.zero, new Vector2(280f, 58f), OpenCredits);
+
+            // \u58F0\u97F3\u5F00\u5173\u6309\u94AE
+            CreateSoundToggle(card.transform, new Vector2(0.85f, 0.84f));
+        }
+
+        private static void CreateSoundToggle(Transform parent, Vector2 anchor)
+        {
+            GameObject toggleObj = CreateObject("音量", parent, typeof(Image), typeof(Button), typeof(SoundToggleButton));
+            SetRect(toggleObj.GetComponent<RectTransform>(), anchor, Vector2.zero, new Vector2(48f, 48f));
+            Button btn = toggleObj.GetComponent<Button>();
+            btn.targetGraphic = toggleObj.GetComponent<Image>();
         }
 
         private static GameObject CreateObject(string name, Transform parent, params System.Type[] components)

@@ -55,16 +55,38 @@ namespace GameJamRAC.Gameplay
         private IEnumerator RespawnRoutine(CharacterUnit character)
         {
             respawning.Add(character);
-            soulBridgeSequence?.ResetSequence();
-            foreach (SceneThreeBConsumeSequence sequence in FindObjectsByType<SceneThreeBConsumeSequence>(FindObjectsSortMode.None))
-                sequence.ResetSequence(false);
-            foreach (D1BConsumeSequence sequence in FindObjectsByType<D1BConsumeSequence>(FindObjectsSortMode.None))
-                sequence.ResetSequence(false);
+            // 统一通过接口重置所有消耗序列
+            foreach (var mb in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
+            {
+                if (mb is IConsumeSequence cs)
+                    cs.ResetSequence(false);
+            }
             foreach (PredatorAI predator in FindObjectsByType<PredatorAI>(FindObjectsSortMode.None))
                 predator.ResetState();
             soulSwapManager?.ResetProgressForRespawn();
             yield return new WaitForSeconds(Mathf.Max(1f, respawnDelay));
             ResetAllCharactersToInitialState();
+
+            // C 角色的头顶标签始终隐藏（匹配 "C1"、"角色 C2" 等）
+            foreach (CharacterUnit c in FindObjectsByType<CharacterUnit>(FindObjectsSortMode.None))
+            {
+                if (c != null && !string.IsNullOrEmpty(c.DisplayName) && c.DisplayName.Contains("C"))
+                {
+                    foreach (ScoreLabelUI label in c.GetComponentsInChildren<ScoreLabelUI>(true))
+                        label.gameObject.SetActive(false);
+                }
+            }
+
+            // 所有消耗序列中 B 被吃掉后，复位时重新隐藏避免闪烁
+            foreach (var mb in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
+            {
+                if (mb is IConsumeSequence cs && cs.WasBConsumed)
+                {
+                    cs.RehideBAfterRespawn();
+                    cs.ClearConsumedFlag();
+                }
+            }
+
             soulBridgeSequence?.EvaluateInitialAInteraction();
             if (soulSwapManager != null)
             {

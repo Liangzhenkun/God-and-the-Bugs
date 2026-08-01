@@ -6,7 +6,7 @@ namespace GameJamRAC.Gameplay
 {
     /// <summary>Scene 3: B dies on its tile; A eats B when it reaches that tile.</summary>
     [DisallowMultipleComponent]
-    public class SceneThreeBConsumeSequence : MonoBehaviour
+    public class SceneThreeBConsumeSequence : MonoBehaviour, IConsumeSequence
     {
         [SerializeField] private CharacterUnit characterA;
         [SerializeField] private CharacterUnit characterB;
@@ -20,7 +20,10 @@ namespace GameJamRAC.Gameplay
 
         private bool bAwaitingConsumption;
         private bool resolving;
+        private bool bConsumed;
         private Coroutine consumeCoroutine;
+
+        public bool WasBConsumed => bConsumed;
 
         public bool IsResolving => resolving;
         public bool IsBUnavailable => bAwaitingConsumption || resolving
@@ -78,6 +81,7 @@ namespace GameJamRAC.Gameplay
         private IEnumerator ConsumeB()
         {
             resolving = true;
+            bConsumed = true;
             if (moverA != null) moverA.enabled = false;
             aVisualState?.PlayEatAnimation();
             yield return new WaitForSeconds(eatDuration);
@@ -102,10 +106,9 @@ namespace GameJamRAC.Gameplay
             consumeCoroutine = null;
             resolving = false;
             bAwaitingConsumption = false;
+            bConsumed = false;
             if (moverA != null) moverA.enabled = true;
             if (moverB != null) moverB.enabled = true;
-            // A 死亡后的复活等待期间，不允许已经被吃掉的 B 因通用重置而闪现。
-            // 等 CharacterRespawnFlow 在等待结束后统一恢复所有角色时，B 才回到初始位置显示。
             if (revealCharacterB)
                 characterB?.SetPresentationVisible(true);
             else
@@ -113,6 +116,16 @@ namespace GameJamRAC.Gameplay
             characterB?.SetVisualDeath(false);
             bVisualState?.SetIdle();
             aVisualState?.RefreshLifeState();
+        }
+
+        public void RehideBAfterRespawn()
+        {
+            characterB?.SetPresentationVisible(false);
+        }
+
+        public void ClearConsumedFlag()
+        {
+            bConsumed = false;
         }
 
         private void ResolveReferences()

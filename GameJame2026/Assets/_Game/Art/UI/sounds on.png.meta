@@ -138,12 +138,12 @@ TextureImporter:
       name: sounds on_0
       rect:
         serializedVersion: 2
-        x: 40
-        y: 95
-        width: 183
-        height: 212
+        x: 14
+        y: 77
+        width: 370
+        height: 249
       alignment: 0
-      pivot: {x: 0, y: 0}
+      pivot: {x: 0.5, y: 0.5}
       border: {x: 0, y: 0, z: 0, w: 0}
       customData: 
       outline: []
@@ -156,77 +156,11 @@ TextureImporter:
       indices: 
       edges: []
       weights: []
-    - serializedVersion: 2
-      name: sounds on_1
-      rect:
-        serializedVersion: 2
-        x: 233
-        y: 153
-        width: 45
-        height: 100
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 482bfa331f7c5ebd0800000000000000
-      internalID: -2601453370968395132
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: sounds on_2
-      rect:
-        serializedVersion: 2
-        x: 267
-        y: 116
-        width: 53
-        height: 170
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: 3d2b52802e2ffee80800000000000000
-      internalID: -8147026148276718893
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
-    - serializedVersion: 2
-      name: sounds on_3
-      rect:
-        serializedVersion: 2
-        x: 304
-        y: 78
-        width: 58
-        height: 242
-      alignment: 0
-      pivot: {x: 0, y: 0}
-      border: {x: 0, y: 0, z: 0, w: 0}
-      customData: 
-      outline: []
-      physicsShape: []
-      tessellationDetail: -1
-      bones: []
-      spriteID: a4d53c8116ea3d890800000000000000
-      internalID: -7434406827808039606
-      vertices: []
-      indices: 
-      edges: []
-      weights: []
     outline: []
     customData: 
     physicsShape: []
     bones: []
-    spriteID: 
+    spriteID: aee763ddd26fd0848ba72363780f33f0
     internalID: 0
     vertices: []
     indices: 

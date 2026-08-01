@@ -117,12 +117,17 @@ namespace GameJamRAC.Gameplay
 
         public void RestartCurrentScene()
         {
+            PlayerPrefs.SetInt("GameJamRAC.SkipIntro", 1);
+            PlayerPrefs.Save();
             Time.timeScale = 1f;
             SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
         }
 
         public void ReturnToTitle()
         {
+            PlayerPrefs.DeleteKey("GameJamRAC.SkipIntro");
+            PlayerPrefs.Save();
+
             string titleSceneName = levelSequence != null && !string.IsNullOrWhiteSpace(levelSequence.TitleSceneName)
                 ? levelSequence.TitleSceneName
                 : fallbackTitleSceneName;

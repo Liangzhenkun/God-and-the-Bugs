@@ -87,14 +87,13 @@ namespace GameJamRAC.Gameplay
             targetCell = mover.Board.WorldToCell(target.transform.position);
             if (targetCell == predatorCell || IsCardinalAdjacent(predatorCell, targetCell))
             {
-                // 场景三中，捕食已经在移动完成后成立；吃动画只作为表现，
-                // 不再占住整轮回合，避免玩家控制 B 时被 1.5 秒动画卡住。
-                if (SceneManager.GetActiveScene().name == "NextScene 3")
-                    StartCoroutine(EatTarget());
-                else
-                    yield return EatTarget();
+                // 吃动画只作为表现，不阻塞玩家操作
+                StartCoroutine(EatTarget());
             }
         }
+
+        /// <summary>指定角色是否正被本捕食者吃（动画播放中）。</summary>
+        public bool IsEatingTarget(CharacterUnit character) => resolving && target == character;
 
         public void ResetState()
         {
@@ -126,6 +125,11 @@ namespace GameJamRAC.Gameplay
             }
 
             resolving = true;
+
+            // 吃动画期间禁止目标移动
+            GridUnitMover targetMover = target != null ? target.GetComponent<GridUnitMover>() : null;
+            if (targetMover != null) targetMover.enabled = false;
+
             if (animator != null) animator.Play(eatStateName, 0, 0f);
             yield return new WaitForSeconds(eatDuration);
 

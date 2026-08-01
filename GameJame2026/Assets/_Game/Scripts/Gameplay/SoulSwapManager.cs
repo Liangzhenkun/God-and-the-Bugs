@@ -1,5 +1,6 @@
 using System;
 using GameJamRAC.Camera;
+using GameJamRAC.UI;
 using Unity.Cinemachine;
 using UnityEngine;
 using UnityEngine.UI;
@@ -30,6 +31,11 @@ namespace GameJamRAC.Gameplay
         [SerializeField, Min(0.05f)] private float overviewBlendDuration = 0.55f;
         [SerializeField, Min(0.05f)] private float characterBlendDuration = 0.55f;
 
+        [Header("镜头提示")]
+        [SerializeField] private GameObject cameraHintPrompt;
+
+        private const string SkipIntroKey = "GameJamRAC.SkipIntro";
+
         private CinemachineBrain cinemachineBrain;
         private Vector3 mainCameraStartPosition;
         private Quaternion mainCameraStartRotation;
@@ -38,8 +44,11 @@ namespace GameJamRAC.Gameplay
         private bool mainCameraStartOrthographic;
         private bool soulSwapUnlocked;
         private Coroutine cameraBlendCoroutine;
+
+        /// <summary>复活后也保持魂穿解锁（场景 3 NeighborCheck 模式需要）。</summary>
+        public bool AlwaysAllowSwapAfterRespawn { get; set; }
         private Coroutine bDefeatRecoveryCoroutine;
-        private bool awaitingStartInput = true;
+        private bool awaitingStartInput;
         private bool isOverviewView = true;
 
         public enum SwapState
@@ -139,8 +148,41 @@ namespace GameJamRAC.Gameplay
             PossessCharacterFromMainCamera(0);
             SetControlledCharacter(-1);
             onStateChanged?.Invoke(currentState);
-            ShowStartPrompt();
+
+            // 重启关卡 → 跳过 Story 和 StatePrompt，直接开始游戏
+            if (PlayerPrefs.GetInt(SkipIntroKey, 0) == 1)
+            {
+                PlayerPrefs.DeleteKey(SkipIntroKey);
+                PlayerPrefs.Save();
+                SkipIntroAndStartGame();
+                SetButtonActive(false);
+                return;
+            }
+
+            // 如果有 Story 剧情，等它结束再显示提示；否则直接显示
+            StoryIntroController story = FindFirstObjectByType<StoryIntroController>();
+            if (story != null && story.gameObject.activeInHierarchy)
+            {
+                story.OnStoryEnd += ShowStartPrompt;
+            }
+            else
+            {
+                ShowStartPrompt();
+            }
+
             SetButtonActive(false);
+        }
+
+        /// <summary>跳过开场流程，直接进入游戏控制，保持全局镜头并显示镜头切换提示。</summary>
+        private void SkipIntroAndStartGame()
+        {
+            awaitingStartInput = false;
+            currentState = SwapState.PossessingA;
+            PossessCharacterFromMainCamera(0);
+            onStateChanged?.Invoke(currentState);
+
+            if (cameraHintPrompt != null)
+                cameraHintPrompt.SetActive(true);
         }
 
         private void EnterState(SwapState newState)
@@ -354,7 +396,7 @@ namespace GameJamRAC.Gameplay
             awaitingStartInput = false;
             currentState = SwapState.PossessingA;
             SetControlledCharacter(0);
-            if (allowSwapImmediately)
+            if (allowSwapImmediately || AlwaysAllowSwapAfterRespawn)
                 SetSoulSwapUnlocked(true);
             UpdateUI("Controlling A");
         }
@@ -487,25 +529,31 @@ namespace GameJamRAC.Gameplay
         private void BeginCharacterControl()
         {
             awaitingStartInput = false;
-            if (statePrompt != null) statePrompt.gameObject.SetActive(false);
+            if (statePrompt != null)
+                statePrompt.gameObject.SetActive(false);
             currentState = SwapState.PossessingA;
             PossessCharacter(0);
             isOverviewView = false;
             onStateChanged?.Invoke(currentState);
+
+            // 首次进入游戏时显示镜头切换提示（自动隐藏由 TextBreathingEffect 上的 duration 控制）
+            if (cameraHintPrompt != null)
+                cameraHintPrompt.SetActive(true);
         }
 
-        private void ShowStartPrompt()
+        public void ShowStartPrompt()
         {
             if (statePrompt == null) return;
 
-            RectTransform promptTransform = statePrompt.rectTransform;
-            promptTransform.anchorMin = new Vector2(0.5f, 0.12f);
-            promptTransform.anchorMax = new Vector2(0.5f, 0.12f);
-            promptTransform.pivot = new Vector2(0.5f, 0.5f);
-            promptTransform.anchoredPosition = Vector2.zero;
-            statePrompt.alignment = TextAnchor.MiddleCenter;
-            statePrompt.text = "Press any key to take control";
+            awaitingStartInput = true;
             statePrompt.gameObject.SetActive(true);
+        }
+
+        /// <summary>供 StatePrompt 下的 Button onClick 调用，效果等同按任意键。</summary>
+        public void DismissStartPrompt()
+        {
+            if (awaitingStartInput)
+                BeginCharacterControl();
         }
     }
 }

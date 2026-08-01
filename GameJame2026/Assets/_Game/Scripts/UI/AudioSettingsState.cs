@@ -12,6 +12,9 @@ namespace GameJamRAC.UI
         public static float Volume => Mathf.Clamp01(PlayerPrefs.GetFloat(VolumeKey, DefaultVolume));
         public static bool SoundEnabled => PlayerPrefs.GetInt(SoundEnabledKey, 1) == 1;
 
+        /// <summary>音量或静音状态变更后触发，订阅者可据此刷新 AudioSource 音量等。</summary>
+        public static event System.Action OnSettingsChanged;
+
         public static void ToggleSound()
         {
             Set(Volume, !SoundEnabled);
@@ -28,6 +31,7 @@ namespace GameJamRAC.UI
         public static void Apply()
         {
             AudioListener.volume = SoundEnabled ? Volume : 0f;
+            OnSettingsChanged?.Invoke();
         }
     }
 }

@@ -11,7 +11,7 @@ namespace GameJamRAC.Gameplay
     /// B's own interaction tiles turn B into a temporary bridge for A.
     /// </summary>
     [DisallowMultipleComponent]
-    public class SoulBridgeSequence : MonoBehaviour
+    public class SoulBridgeSequence : MonoBehaviour, IConsumeSequence
     {
         [Header("Characters")]
         [SerializeField] private CharacterUnit characterA;
@@ -57,16 +57,6 @@ namespace GameJamRAC.Gameplay
         {
             ResolveReferences();
             SetGlow(false, activatedGlowColor);
-
-            // 只要当前场景没有独立的第三段规则，就用 D1 的交互范围处理 B 的死亡与 A 的吞噬。
-            if (Application.isPlaying
-                && GameObject.Find("D1") != null
-                && FindFirstObjectByType<SceneThreeBConsumeSequence>() == null
-                && FindFirstObjectByType<D1BConsumeSequence>() == null)
-            {
-                enableBridgeStep = false;
-                new GameObject("D1BConsumeSequence").AddComponent<D1BConsumeSequence>();
-            }
         }
 
         private void OnEnable()
@@ -208,8 +198,13 @@ namespace GameJamRAC.Gameplay
             absorptionCoroutine = null;
         }
 
+        public bool IsResolving => absorptionCoroutine != null;
+        public bool WasBConsumed => false;
+        public void RehideBAfterRespawn() { }
+        public void ClearConsumedFlag() { }
+
         /// <summary>恢复本关开局的交互状态，供死亡复活流程调用。</summary>
-        public void ResetSequence()
+        public void ResetSequence(bool revealB = true)
         {
             if (absorptionCoroutine != null)
             {

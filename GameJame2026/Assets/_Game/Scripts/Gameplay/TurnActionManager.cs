@@ -50,9 +50,12 @@ namespace GameJamRAC.Gameplay
 
         private IEnumerator RunAutonomousTurns(CharacterUnit player)
         {
-            SceneThreeBConsumeSequence consume = FindFirstObjectByType<SceneThreeBConsumeSequence>();
-            if (consume != null)
-                yield return new WaitWhile(() => consume.IsResolving);
+            // 等待所有消耗序列完成后再开启 AI 回合
+            foreach (var mb in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
+            {
+                if (mb is IConsumeSequence cs && cs.IsResolving)
+                    yield return new WaitWhile(() => cs.IsResolving);
+            }
 
             GridUnitMover playerMover = player.GetComponent<GridUnitMover>();
             if (playerMover != null) playerMover.enabled = false;
@@ -75,7 +78,12 @@ namespace GameJamRAC.Gameplay
             yield return new WaitWhile(() => activePredatorTurns > 0);
             autonomousTurnActive = false;
 
-            if (playerMover != null && !player.IsDead)
+            // 玩家正被吃时不恢复 Mover，等吃动画播完再恢复
+            bool playerBeingEaten = false;
+            foreach (PredatorAI predator in FindObjectsByType<PredatorAI>(FindObjectsSortMode.None))
+                if (predator.IsEatingTarget(player)) { playerBeingEaten = true; break; }
+
+            if (playerMover != null && !player.IsDead && !playerBeingEaten)
                 playerMover.enabled = true;
             turnCoroutine = null;
         }

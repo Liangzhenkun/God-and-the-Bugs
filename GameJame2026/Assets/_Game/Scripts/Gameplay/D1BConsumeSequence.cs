@@ -10,7 +10,7 @@ namespace GameJamRAC.Gameplay
     /// A 踏入 B 的交互格后吞噬 B。
     /// </summary>
     [DisallowMultipleComponent]
-    public class D1BConsumeSequence : MonoBehaviour
+    public class D1BConsumeSequence : MonoBehaviour, IConsumeSequence
     {
         [Header("角色")]
         [SerializeField] private CharacterUnit characterA;
@@ -30,8 +30,13 @@ namespace GameJamRAC.Gameplay
         private GridUnitMover moverB;
         private bool bAwaitingConsumption;
         private bool resolving;
+        private bool bConsumed;
         private Coroutine consumeCoroutine;
 
+        /// <summary>B 已被吃掉，重生流程中先别显示。</summary>
+        public bool WasBConsumed => bConsumed;
+
+        public bool IsResolving => resolving;
         public bool IsBUnavailable => bAwaitingConsumption || resolving
             || (characterB != null && (characterB.IsDead || characterB.IsVisuallyDead));
 
@@ -52,12 +57,26 @@ namespace GameJamRAC.Gameplay
             ResolveReferences();
             if (moverB != null) moverB.onCellReached += OnBCellReached;
             if (moverA != null) moverA.onCellReached += OnACellReached;
+            if (characterB != null) characterB.onDied += OnBDeath;
         }
 
         private void OnDisable()
         {
             if (moverB != null) moverB.onCellReached -= OnBCellReached;
             if (moverA != null) moverA.onCellReached -= OnACellReached;
+            if (characterB != null) characterB.onDied -= OnBDeath;
+        }
+
+        private void OnBDeath(CharacterUnit character)
+        {
+            if (character != characterB || bConsumed) return;
+            bAwaitingConsumption = false;
+            bVisualState?.SetDead();
+            if (moverB != null)
+            {
+                moverB.SetMoveTargetsVisible(false);
+                moverB.enabled = false;
+            }
         }
 
         private void OnBCellReached(Vector3Int _)
@@ -89,25 +108,41 @@ namespace GameJamRAC.Gameplay
 
         private void TryStartConsumptionIfAIsOnBInteraction()
         {
-            if (!bAwaitingConsumption || resolving || boardB == null || characterA == null) return;
+            if (!bAwaitingConsumption || resolving || boardB == null || characterA == null || moverB == null) return;
 
             Vector3Int cellOnBBoard = boardB.WorldToCell(characterA.transform.position);
             if (!boardB.HasInteraction(cellOnBBoard)) return;
 
+            // 检测 A 前后左右四个邻居格，是否存在视觉死亡的 B
+            Vector3Int[] neighbors = { cellOnBBoard + Vector3Int.right, cellOnBBoard + Vector3Int.left, cellOnBBoard + Vector3Int.up, cellOnBBoard + Vector3Int.down };
+            bool bFound = false;
+            foreach (Vector3Int neighbor in neighbors)
+            {
+                if (neighbor == moverB.CurrentCell && characterB != null && characterB.IsVisuallyDead)
+                {
+                    bFound = true;
+                    break;
+                }
+            }
+
+            if (!bFound) return;
             consumeCoroutine = StartCoroutine(ConsumeB());
         }
 
         private IEnumerator ConsumeB()
         {
             resolving = true;
+            bConsumed = true;
             if (moverA != null) moverA.enabled = false;
             aVisualState?.PlayEatAnimation();
             yield return new WaitForSeconds(eatDuration);
 
             characterB?.TransferRemainingLifeTo(characterA);
             characterB?.SetPresentationVisible(false);
+            characterB?.SetVisualDeath(false);
             aVisualState?.FinishEatAnimation();
 
+            bAwaitingConsumption = false;
             resolving = false;
             consumeCoroutine = null;
             if (moverA != null && characterA != null && !characterA.IsDead)
@@ -123,6 +158,7 @@ namespace GameJamRAC.Gameplay
             consumeCoroutine = null;
             resolving = false;
             bAwaitingConsumption = false;
+            // bConsumed 不清，留给 CharacterRespawnFlow 做完隐藏后再清
 
             if (moverA != null) moverA.enabled = true;
             if (moverB != null) moverB.enabled = true;
@@ -130,6 +166,18 @@ namespace GameJamRAC.Gameplay
             characterB?.SetVisualDeath(false);
             bVisualState?.SetIdle();
             aVisualState?.RefreshLifeState();
+        }
+
+        /// <summary>重生复位后再隐藏 B，防止闪烁。</summary>
+        public void RehideBAfterRespawn()
+        {
+            characterB?.SetPresentationVisible(false);
+        }
+
+        /// <summary>隐藏完成后清标记，下次死亡重新判断。</summary>
+        public void ClearConsumedFlag()
+        {
+            bConsumed = false;
         }
 
         private void ResolveReferences()
