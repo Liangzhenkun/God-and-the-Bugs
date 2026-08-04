@@ -106,6 +106,7 @@ namespace GameJamRAC.Grid
         {
             // 禁用移动器代表该角色本回合不能再行动；仍可被外部事件传送或复位。
             if (!isActiveAndEnabled || board == null || isMoving) return false;
+            if (!ignoreAbility && !HasPlayerMoveAuthority()) return false;
 
             targetCell.z = 0;
             Vector2Int offset = new Vector2Int(targetCell.x - currentCell.x, targetCell.y - currentCell.y);
@@ -115,6 +116,17 @@ namespace GameJamRAC.Grid
             onMoveStarted?.Invoke(targetCell);
             StartCoroutine(MoveToCell(targetCell, GetGridDistance(offset), lifeCost));
             return true;
+        }
+
+        private bool HasPlayerMoveAuthority()
+        {
+            GameJamRAC.Gameplay.CharacterUnit character = GetComponent<GameJamRAC.Gameplay.CharacterUnit>();
+            if (character == null) return true;
+            if (!character.IsPlayerControlled) return false;
+
+            GameJamRAC.Gameplay.SoulSwapManager soulSwap =
+                FindFirstObjectByType<GameJamRAC.Gameplay.SoulSwapManager>();
+            return soulSwap == null || soulSwap.IsActiveControlledCharacter(character);
         }
 
         public bool TryMoveFromScreen(UnityEngine.Camera camera, Vector3 screenPosition)
@@ -156,6 +168,7 @@ namespace GameJamRAC.Grid
             currentCell = targetCell;
             transform.position = board.GetCellCenterWorld(targetCell);
             RefreshMoveTargets();
+            onCellReached?.Invoke(targetCell);
             return true;
         }
 

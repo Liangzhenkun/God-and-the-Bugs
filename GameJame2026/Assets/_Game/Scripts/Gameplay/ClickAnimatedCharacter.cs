@@ -1,6 +1,7 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 
 namespace GameJamRAC.Gameplay
 {
@@ -29,13 +30,13 @@ namespace GameJamRAC.Gameplay
 
         private void Update()
         {
-            if (!Input.GetMouseButtonDown(0)) return;
+            if (Mouse.current == null || !Mouse.current.leftButton.wasPressedThisFrame) return;
             if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
 
             UnityEngine.Camera camera = UnityEngine.Camera.main;
             if (camera == null) return;
 
-            Ray ray = camera.ScreenPointToRay(Input.mousePosition);
+            Ray ray = camera.ScreenPointToRay(Mouse.current.position.ReadValue());
             if (!Physics.Raycast(ray, out RaycastHit hit)) return;
             if (hit.transform != transform && !hit.transform.IsChildOf(transform)) return;
 

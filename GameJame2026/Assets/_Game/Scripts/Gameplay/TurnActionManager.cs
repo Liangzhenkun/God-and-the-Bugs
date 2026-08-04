@@ -18,6 +18,7 @@ namespace GameJamRAC.Gameplay
         private readonly Dictionary<GridUnitMover, int> processedMoveCounts = new Dictionary<GridUnitMover, int>();
         private Coroutine turnCoroutine;
         private bool autonomousTurnActive;
+        private SoulSwapManager soulSwapManager;
 
         public bool IsAutonomousTurnActive => autonomousTurnActive;
 
@@ -32,6 +33,7 @@ namespace GameJamRAC.Gameplay
             }
 
             activeInstance = this;
+            soulSwapManager = FindFirstObjectByType<SoulSwapManager>();
             SubscribeMovers();
         }
 
@@ -77,6 +79,7 @@ namespace GameJamRAC.Gameplay
         private void OnUnitCellReached(CharacterUnit unit, GridUnitMover mover)
         {
             if (unit == null || mover == null || !unit.IsPlayerControlled || unit.IsDead) return;
+            if (soulSwapManager != null && !soulSwapManager.IsActiveControlledCharacter(unit)) return;
             if (turnCoroutine != null) return;
 
             int moveCount = mover.CompletedMoveCount;
@@ -133,8 +136,8 @@ namespace GameJamRAC.Gameplay
                 bool isResolving = false;
                 foreach (MonoBehaviour mb in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
                 {
-                    IConsumeSequence sequence = mb as IConsumeSequence;
-                    if (sequence == null || !sequence.IsResolving) continue;
+                    IConsumptionRule rule = mb as IConsumptionRule;
+                    if (rule == null || !rule.IsResolving) continue;
 
                     isResolving = true;
                     break;

@@ -3,6 +3,7 @@ using GameJamRAC.Camera;
 using GameJamRAC.UI;
 using Unity.Cinemachine;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 using System.Collections;
 
@@ -44,6 +45,7 @@ namespace GameJamRAC.Gameplay
         private bool mainCameraStartOrthographic;
         private bool soulSwapUnlocked;
         private Coroutine cameraBlendCoroutine;
+        private CharacterUnit controlledCharacter;
 
         /// <summary>复活后也保持魂穿解锁（场景 3 NeighborCheck 模式需要）。</summary>
         public bool AlwaysAllowSwapAfterRespawn { get; set; }
@@ -59,6 +61,7 @@ namespace GameJamRAC.Gameplay
 
         private SwapState currentState = SwapState.PossessingA;
         public SwapState CurrentState => currentState;
+        public CharacterUnit ControlledCharacter => controlledCharacter;
         public event Action<SwapState> onStateChanged;
 
         private void Awake()
@@ -110,7 +113,7 @@ namespace GameJamRAC.Gameplay
             if (soulSwapUnlocked)
                 SetButtonActive(CanPossessCharacter(GetOtherCharacterIndex()));
 
-            if (Input.GetMouseButtonDown(1))
+            if (Mouse.current != null && Mouse.current.rightButton.wasPressedThisFrame)
             {
                 if (isOverviewView)
                     FocusCurrentCharacter();
@@ -254,6 +257,13 @@ namespace GameJamRAC.Gameplay
             if (characters == null)
                 return;
 
+            foreach (CharacterUnit unit in FindObjectsByType<CharacterUnit>(FindObjectsSortMode.None))
+            {
+                if (unit != null)
+                    unit.ReleaseControl();
+            }
+
+            controlledCharacter = null;
             for (int i = 0; i < characters.Length; i++)
             {
                 CharacterUnit character = characters[i];
@@ -264,9 +274,10 @@ namespace GameJamRAC.Gameplay
                     character.ViewAnchor.SetCinemachineActive(false);
 
                 if (i == index)
+                {
                     character.TakeControl();
-                else
-                    character.ReleaseControl();
+                    controlledCharacter = character.IsPlayerControlled ? character : null;
+                }
             }
         }
 
@@ -280,12 +291,22 @@ namespace GameJamRAC.Gameplay
             if (!HasCharacter(index) || characters[index].IsDead)
                 return false;
 
-            SceneThreeBConsumeSequence sceneThreeConsume = FindFirstObjectByType<SceneThreeBConsumeSequence>();
-            if (sceneThreeConsume != null && index == 1 && sceneThreeConsume.IsBUnavailable)
-                return false;
+            CharacterUnit candidate = characters[index];
+            foreach (MonoBehaviour mb in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
+            {
+                if (mb == null || !mb.isActiveAndEnabled) continue;
 
-            D1BConsumeSequence d1Consume = FindFirstObjectByType<D1BConsumeSequence>();
-            return d1Consume == null || index != 1 || !d1Consume.IsBUnavailable;
+                ICharacterAvailabilityRule rule = mb as ICharacterAvailabilityRule;
+                if (rule != null && rule.IsCharacterUnavailable(candidate))
+                    return false;
+            }
+
+            return true;
+        }
+
+        public bool IsActiveControlledCharacter(CharacterUnit character)
+        {
+            return character != null && character == controlledCharacter;
         }
 
         private int GetOtherCharacterIndex()
@@ -520,10 +541,11 @@ namespace GameJamRAC.Gameplay
 
         private bool HasStartInput()
         {
-            return Input.anyKeyDown
-                || Input.GetMouseButtonDown(0)
-                || Input.GetMouseButtonDown(1)
-                || Input.GetMouseButtonDown(2);
+            return (Keyboard.current != null && Keyboard.current.anyKey.wasPressedThisFrame)
+                || (Mouse.current != null
+                    && (Mouse.current.leftButton.wasPressedThisFrame
+                        || Mouse.current.rightButton.wasPressedThisFrame
+                        || Mouse.current.middleButton.wasPressedThisFrame));
         }
 
         private void BeginCharacterControl()

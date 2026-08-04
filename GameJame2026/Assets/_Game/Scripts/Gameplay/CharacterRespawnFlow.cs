@@ -10,7 +10,7 @@ namespace GameJamRAC.Gameplay
         [SerializeField] private CharacterUnit[] characters;
         [SerializeField] private SoulSwapManager soulSwapManager;
         [SerializeField] private GameplaySceneManager gameplaySceneManager;
-        [SerializeField] private SoulBridgeSequence soulBridgeSequence;
+        [SerializeField] private BridgeConsumptionRule bridgeConsumptionRule;
         [SerializeField, Min(1f)] private float respawnDelay = 1f;
 
         private readonly HashSet<CharacterUnit> respawning = new HashSet<CharacterUnit>();
@@ -21,7 +21,7 @@ namespace GameJamRAC.Gameplay
                 characters = FindObjectsByType<CharacterUnit>(FindObjectsSortMode.None);
             if (soulSwapManager == null) soulSwapManager = FindFirstObjectByType<SoulSwapManager>();
             if (gameplaySceneManager == null) gameplaySceneManager = FindFirstObjectByType<GameplaySceneManager>();
-            if (soulBridgeSequence == null) soulBridgeSequence = FindFirstObjectByType<SoulBridgeSequence>();
+            if (bridgeConsumptionRule == null) bridgeConsumptionRule = FindFirstObjectByType<BridgeConsumptionRule>();
         }
 
         private void OnEnable()
@@ -53,16 +53,18 @@ namespace GameJamRAC.Gameplay
         private IEnumerator RespawnRoutine(CharacterUnit character)
         {
             respawning.Add(character);
-            List<IConsumeSequence> consumedSequences = new List<IConsumeSequence>();
+            List<IConsumptionRule> consumedRules = new List<IConsumptionRule>();
 
             foreach (MonoBehaviour mb in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
             {
-                IConsumeSequence sequence = mb as IConsumeSequence;
-                if (sequence == null) continue;
+                IConsumptionRule rule = mb as IConsumptionRule;
+                if (rule == null) continue;
 
-                if (sequence.WasBConsumed)
-                    consumedSequences.Add(sequence);
-                sequence.ResetSequence(false);
+                bool wasBConsumed = rule.WasBConsumed;
+                if (wasBConsumed)
+                    consumedRules.Add(rule);
+
+                rule.ResetSequence(!wasBConsumed);
             }
 
             foreach (PredatorAI predator in FindObjectsByType<PredatorAI>(FindObjectsSortMode.None))
@@ -71,10 +73,11 @@ namespace GameJamRAC.Gameplay
 
             yield return new WaitForSeconds(Mathf.Max(1f, respawnDelay));
             ResetAllCharactersToInitialState();
-            ClearConsumedFlags(consumedSequences);
+            RehideConsumedCharacters(consumedRules);
+            ClearConsumedFlags(consumedRules);
             HideCLabels();
 
-            soulBridgeSequence?.EvaluateInitialAInteraction();
+            bridgeConsumptionRule?.EvaluateInitialAInteraction();
             if (soulSwapManager != null)
             {
                 soulSwapManager.RestoreInitialControlAfterRespawn();
@@ -98,10 +101,16 @@ namespace GameJamRAC.Gameplay
             }
         }
 
-        private static void ClearConsumedFlags(List<IConsumeSequence> consumedSequences)
+        private static void ClearConsumedFlags(List<IConsumptionRule> consumedRules)
         {
-            foreach (IConsumeSequence sequence in consumedSequences)
-                sequence.ClearConsumedFlag();
+            foreach (IConsumptionRule rule in consumedRules)
+                rule.ClearConsumedFlag();
+        }
+
+        private static void RehideConsumedCharacters(List<IConsumptionRule> consumedRules)
+        {
+            foreach (IConsumptionRule rule in consumedRules)
+                rule.RehideBAfterRespawn();
         }
 
         private static void HideCLabels()

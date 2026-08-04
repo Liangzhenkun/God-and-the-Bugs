@@ -13,6 +13,8 @@ MonoBehaviour:
   m_Name: L1 Bridge
   m_EditorClassIdentifier: 
   consumeRule: 0
+  unlockSoulSwapOnStart: 0
+  keepSoulSwapAfterRespawn: 0
   hasStory: 1
   hasCameraHint: 1
   cameraHintDuration: 1.5

@@ -228,9 +228,14 @@ namespace GameJamRAC.Gameplay
             if (activeTarget == null || activeTarget.IsVisuallyDead)
                 return false;
 
-            SceneThreeBConsumeSequence sceneThreeB = FindFirstObjectByType<SceneThreeBConsumeSequence>();
-            if (sceneThreeB != null && sceneThreeB.IsUnavailableAsPrey(activeTarget))
-                return false;
+            foreach (MonoBehaviour mb in FindObjectsByType<MonoBehaviour>(FindObjectsSortMode.None))
+            {
+                if (mb == null || !mb.isActiveAndEnabled) continue;
+
+                ICharacterAvailabilityRule rule = mb as ICharacterAvailabilityRule;
+                if (rule != null && rule.IsUnavailableAsPrey(activeTarget))
+                    return false;
+            }
 
             if (mover == null || mover.Board == null)
                 return false;

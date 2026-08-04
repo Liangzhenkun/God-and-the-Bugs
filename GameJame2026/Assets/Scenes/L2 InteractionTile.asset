@@ -13,6 +13,8 @@ MonoBehaviour:
   m_Name: L2 InteractionTile
   m_EditorClassIdentifier: 
   consumeRule: 1
+  unlockSoulSwapOnStart: 1
+  keepSoulSwapAfterRespawn: 1
   hasStory: 1
   hasCameraHint: 1
   cameraHintDuration: 1.5

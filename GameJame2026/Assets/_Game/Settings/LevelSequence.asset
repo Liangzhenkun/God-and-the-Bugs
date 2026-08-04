@@ -16,7 +16,7 @@ MonoBehaviour:
   levels:
   - sceneAsset: {fileID: 102900000, guid: ae70aceb8b702da469d98d24bdfac7b3, type: 3}
     sceneName: MainScene
-  - sceneAsset: {fileID: 102900000, guid: f8601c94aaa980a43a816e56fb81735e, type: 3}
-    sceneName: NextScene 2
   - sceneAsset: {fileID: 102900000, guid: f63c55bd5aecf4d489338a3a443e5a07, type: 3}
+    sceneName: NextScene 2
+  - sceneAsset: {fileID: 102900000, guid: f8601c94aaa980a43a816e56fb81735e, type: 3}
     sceneName: NextScene 3

@@ -3,6 +3,7 @@ using GameJamRAC.Grid;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.Events;
+using UnityEngine.InputSystem;
 using System;
 
 namespace GameJamRAC.Gameplay
@@ -43,6 +44,7 @@ namespace GameJamRAC.Gameplay
         private Vector3 spawnPosition;
         private Quaternion spawnRotation;
         private bool spawnCaptured;
+        private SoulSwapManager soulSwapManager;
 
         public int CurrentLife => currentLife;
         public bool IsDead => isDead;
@@ -126,18 +128,34 @@ namespace GameJamRAC.Gameplay
 
         private void Update()
         {
-            if (isPlayerControlled && !isDead && !isVisuallyDead)
+            if (!isPlayerControlled || isDead || isVisuallyDead) return;
+
+            if (!CanReadPlayerInput())
+            {
+                ReleaseControl();
+                return;
+            }
+
+            if (isPlayerControlled)
                 ReadGridInput();
+        }
+
+        private bool CanReadPlayerInput()
+        {
+            if (soulSwapManager == null)
+                soulSwapManager = FindFirstObjectByType<SoulSwapManager>();
+
+            return soulSwapManager == null || soulSwapManager.IsActiveControlledCharacter(this);
         }
 
         private void ReadGridInput()
         {
             if (gridMover.IsMoving) return;
 
-            if (!Input.GetMouseButtonDown(0)) return;
+            if (Mouse.current == null || !Mouse.current.leftButton.wasPressedThisFrame) return;
             if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
 
-            gridMover.TryMoveFromScreen(UnityEngine.Camera.main, Input.mousePosition);
+            gridMover.TryMoveFromScreen(UnityEngine.Camera.main, Mouse.current.position.ReadValue());
         }
 
         /// <summary>成功进入一个新格后扣除该格的生命消耗。</summary>

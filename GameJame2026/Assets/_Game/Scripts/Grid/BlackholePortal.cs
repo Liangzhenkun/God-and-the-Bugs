@@ -90,6 +90,7 @@ namespace GameJamRAC.Grid
         private void OnMoverCellReached(GridUnitMover activeMover)
         {
             if (teleporting || activeMover == null || portalTilemap == null || entranceTile == null) return;
+            if (!HasPortalAuthority(activeMover)) return;
 
             GridBoard activeBoard = activeMover.Board;
             if (activeBoard == null) return;
@@ -111,6 +112,19 @@ namespace GameJamRAC.Grid
             teleporting = true;
             activeMover.TeleportToCell(activeExitCell);
             teleporting = false;
+        }
+
+        private static bool HasPortalAuthority(GridUnitMover activeMover)
+        {
+            GameJamRAC.Gameplay.CharacterUnit character =
+                activeMover.GetComponent<GameJamRAC.Gameplay.CharacterUnit>();
+            if (character == null) return true;
+
+            GameJamRAC.Gameplay.SoulSwapManager soulSwap =
+                FindFirstObjectByType<GameJamRAC.Gameplay.SoulSwapManager>();
+            return soulSwap != null
+                ? soulSwap.IsActiveControlledCharacter(character)
+                : character.IsPlayerControlled;
         }
 
         private void ResolveReferences()

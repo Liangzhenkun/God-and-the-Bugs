@@ -4936,7 +4936,7 @@ Animator:
   m_GameObject: {fileID: 647515374}
   m_Enabled: 1
   m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 9100000, guid: 2d36ef0db141e50438d5859abe7a0c17, type: 2}
+  m_Controller: {fileID: 0}
   m_CullingMode: 0
   m_UpdateMode: 0
   m_ApplyRootMotion: 0
@@ -6186,7 +6186,7 @@ GameObject:
   - component: {fileID: 1072711214}
   - component: {fileID: 1072711213}
   m_Layer: 0
-  m_Name: SoulBridgeSequence
+  m_Name: BridgeConsumptionRule
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -10869,7 +10869,7 @@ MonoBehaviour:
   - {fileID: 1848178471}
   soulSwapManager: {fileID: 1971466565}
   gameplaySceneManager: {fileID: 0}
-  soulBridgeSequence: {fileID: 0}
+  bridgeConsumptionRule: {fileID: 0}
   respawnDelay: 1
 --- !u!1 &2020354128
 GameObject:
@@ -11684,7 +11684,7 @@ GameObject:
   - component: {fileID: 2087810282}
   - component: {fileID: 2087810281}
   m_Layer: 0
-  m_Name: Levelrule
+  m_Name: LevelRules
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
