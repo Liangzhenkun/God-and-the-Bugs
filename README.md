@@ -27,7 +27,7 @@
 
 ### 环境要求 / Requirements
 
-- [Unity Hub](https://unity.com/download) 与 **Unity 6000.0.73f1**（Unity 6）
+- [Unity Hub](https://unity.com/download) 与 **Unity 6000.0.80f1**（Unity 6）
 - [Git](https://git-scm.com/downloads)
 - [Git LFS](https://git-lfs.com/)（用于下载大型美术、音频等资源）
 
@@ -42,8 +42,8 @@
    ```
 
 2. 打开 Unity Hub，选择 **Add / 添加**。
-3. 选择仓库中的 `GameJame2026` 文件夹，而不是仓库根目录。
-4. 使用 Unity **6000.0.73f1** 打开项目；首次导入资源可能需要几分钟。
+3. 选择克隆下来的仓库根目录（`GMTK2026_RAC` 文件夹），而不是其中的子目录。
+4. 使用 Unity **6000.0.80f1** 打开项目；首次导入资源可能需要几分钟。
 
 ## 运行与调试 / Run & Debug
 
